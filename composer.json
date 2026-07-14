@@ -3,6 +3,12 @@
   "description": "The Command-as-atom core: the surface-agnostic Operation value object plus the CommandProvider and SurfaceProjector contracts. One operation, N surfaces.",
   "type": "library",
   "license": "Apache-2.0",
+  "authors": [
+    {
+      "name": "Rodrigo Vicente - TeamX Agency",
+      "homepage": "https://teamx.agency"
+    }
+  ],
   "require": {
     "php": ">=8.3"
   },

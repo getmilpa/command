@@ -62,4 +62,23 @@ final class OperationTest extends TestCase
         self::assertSame(['posts:write'], $op->scopes);
         self::assertSame('/posts', $op->path);
     }
+
+    public function testPermissionDefaultsNull(): void
+    {
+        $op = new Operation('n', 'd', static fn (): array => []);
+        self::assertNull($op->permission);
+    }
+
+    public function testPermissionTypedOperation(): void
+    {
+        $op = new Operation('crm.contact.update', 'd', static fn (): array => [], permission: 'crm.contact:update');
+        self::assertSame('crm.contact:update', $op->permission);
+        self::assertSame([], $op->scopes);
+    }
+
+    public function testScopeAndPermissionTogetherIsRejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new Operation('bad', 'd', static fn (): array => [], scopes: ['crm.contact:update'], permission: 'crm.contact:update');
+    }
 }

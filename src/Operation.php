@@ -31,12 +31,16 @@ readonly class Operation
      *                                                                 Called with the coerced `array<string,mixed> $input`; returns domain data.
      * @param array<string, mixed>|null                  $inputSchema  JSON-Schema-shaped input definition; null = no typed inputs.
      * @param list<string>                               $scopes       Auth scopes enforced by a policy gate on surfaces that have
-     *                                                                 one wired — MCP today (via tool-runtime's PolicyGate); HTTP
-     *                                                                 scope enforcement lands with per-route middleware in a later
-     *                                                                 slice.
+     *                                                                 one wired — MCP via tool-runtime's PolicyGate, and HTTP via
+     *                                                                 the HttpProjector's scope gate: a non-empty `$scopes` makes
+     *                                                                 the projector attach a per-route RequireScope middleware and
+     *                                                                 build the `ToolContext::web()` the same PolicyGate reads, so
+     *                                                                 HTTP now enforces scopes instead of ignoring them.
      * @param array<string, mixed>|null                  $outputSchema JSON-Schema-shaped output definition.
      * @param string|null                                $path         HTTP path; declared here, or (null) derived from `$name`.
      * @param list<string>|null                          $surfaces     Surfaces this operation opts into; null = all.
+     * @param string|null                                $permission   The semantic permission key (`{namespace}.{resource}:{action}`) a
+     *                                                                 permission-aware surface enforces; mutually exclusive with `$scopes`.
      */
     public function __construct(
         public string $name,
@@ -50,7 +54,15 @@ readonly class Operation
         public ?string $version = null,
         public ?string $path = null,
         public ?array $surfaces = null,
+        public ?string $permission = null,
     ) {
+        if ($this->scopes !== [] && $this->permission !== null) {
+            throw new \InvalidArgumentException(
+                "Operation '{$this->name}' declares BOTH scopes and a permission. In this release an "
+                . 'operation is typed by scope XOR permission — declare one, not both. Composition '
+                . '(allOf/anyOf) is a deliberate future move, not an implicit "both must pass".'
+            );
+        }
     }
 
     /**
