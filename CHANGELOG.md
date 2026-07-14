@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/getmilpa/command/compare/v0.1.0...v0.2.0) (2026-07-14)
+
+
+### Features
+
+* Operation typed by scope XOR permission ([cacedc6](https://github.com/getmilpa/command/commit/cacedc6fee2c421ecace135fc29ddd5b8fd59402))
+
 ## 0.1.0 (2026-07-10)
 
 
