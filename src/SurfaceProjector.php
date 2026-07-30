@@ -17,9 +17,9 @@ namespace Milpa\Command;
 /**
  * The contract a surface projector implements — the seam that stabilizes the wave's later surfaces
  * (web SchemaForm, TUI, pluggable channels). A projector materializes an {@see Operation} into one
- * surface's native shape; the projection method itself is surface-specific (a CLI projector derives
- * flags, an MCP projector registers a tool, an HTTP projector synthesizes routes), so this contract
- * only fixes the surface tag and the per-operation opt-out check.
+ * surface's native shape. Cada superficie produce un modelo distinto —flags, rutas, herramientas—
+ * pero TODAS producen un modelo: eso es lo que fija {@see self::project()}, y lo que este contrato
+ * antes declinaba fijar.
  */
 interface SurfaceProjector
 {
@@ -28,4 +28,19 @@ interface SurfaceProjector
 
     /** Whether the operation opts into this projector's surface. */
     public function supports(Operation $op): bool;
+
+    /**
+     * Proyecta la operación al modelo de esta superficie.
+     *
+     * Devuelve un valor y no toca nada: no ejecuta, no registra, no responde. Materializar ese
+     * modelo —correrlo, montarlo en un registry, pintarlo— es de otra pieza, y esa separación es lo
+     * que permite cambiar el renderer de una superficie sin tocar su projector.
+     *
+     * Este método NO existía, y su ausencia no era un olvido: el contrato decía que el método de
+     * proyección era «específico de cada superficie» y por eso sólo fijaba `surface()` y
+     * `supports()`. El resultado fue que las tres implementaciones hicieran cosas distintas e
+     * incompatibles — una ejecutaba y devolvía un código de salida, otra atendía peticiones HTTP, la
+     * tercera mutaba un registry y devolvía `void`. Nombrarlo es la cláusula 3 de ADR-0035.
+     */
+    public function project(Operation $op): SurfaceModel;
 }

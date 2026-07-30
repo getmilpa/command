@@ -1,6 +1,15 @@
 {
   "name": "milpa/command",
   "description": "The Command-as-atom core: the surface-agnostic Operation value object plus the CommandProvider and SurfaceProjector contracts. One operation, N surfaces.",
+  "keywords": [
+    "php",
+    "milpa",
+    "framework",
+    "command-pattern",
+    "cqrs",
+    "value-object",
+    "surface-agnostic"
+  ],
   "type": "library",
   "license": "Apache-2.0",
   "authors": [
