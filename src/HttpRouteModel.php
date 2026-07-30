@@ -38,12 +38,18 @@ final readonly class HttpRouteModel implements SurfaceModel
     ) {
     }
 
+    /** La superficie de este modelo — `http`. */
     public function surface(): string
     {
         return 'http';
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * El modelo como datos planos: lo que una tabla de rutas, un cliente generado o un diff
+     * entre versiones del API necesitan leer sin montar la superficie.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [
