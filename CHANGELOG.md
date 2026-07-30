@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/getmilpa/command/compare/v0.2.0...v0.3.0) (2026-07-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* `SurfaceProjector` gains `project(Operation): SurfaceModel`. Any implementation outside this repository must add it.
+
+### Features
+
+* a projector produces a model — SurfaceProjector names project() ([81f6125](https://github.com/getmilpa/command/commit/81f612579975bd7cfff26eeca1b550dc7358502f))
+
 ## [0.2.0](https://github.com/getmilpa/command/compare/v0.1.0...v0.2.0) (2026-07-14)
 
 
