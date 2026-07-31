@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/getmilpa/command/compare/v0.3.0...v0.3.1) (2026-07-31)
+
+
+### Features
+
+* OperationHttpPolicy — the contract for deciding whether a caller may run an operation ([850b356](https://github.com/getmilpa/command/commit/850b356843cc836fbbbe80635b6ff51426fb1df2))
+
 ## [0.3.0](https://github.com/getmilpa/command/compare/v0.2.0...v0.3.0) (2026-07-30)
 
 
