@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/getmilpa/command/compare/v0.3.1...v0.4.0) (2026-08-01)
+
+
+### Features
+
+* el contexto de invocacion viaja con la operacion ([e93e71e](https://github.com/getmilpa/command/commit/e93e71e8af667392e3b1f3bc4b94e73e9979db0e))
+
 ## [0.3.1](https://github.com/getmilpa/command/compare/v0.3.0...v0.3.1) (2026-07-31)
 
 
