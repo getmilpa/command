@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/getmilpa/command/compare/v0.4.0...v0.5.0) (2026-08-02)
+
+
+### Features
+
+* an operation can declare its named target — the intent contract ([6412187](https://github.com/getmilpa/command/commit/64121873dacd9d5ed24d7dac680bbfba5e6dc95c))
+
 ## [0.4.0](https://github.com/getmilpa/command/compare/v0.3.1...v0.4.0) (2026-08-01)
 
 
