@@ -89,6 +89,26 @@ projector decides, per operation, whether and how to project it (`supports()` / 
 The concrete projectors — the CLI command factory, the MCP tool registrar, the HTTP route
 synthesizer — live host-side, not in this package.
 
+## An operation can own its doubt
+
+Since 0.5, an operation may declare that its target must be **named by the human** who asked:
+
+```php
+new Operation(
+    name: 'plugins.disable',
+    // …
+    namedTarget: 'name',   // the argument whose value must appear in the request
+);
+```
+
+Declaring is the whole job of this package — the field is a contract, not a behaviour. Whoever
+holds the session enforces it (the framework's session gate does: an agent calling
+`plugins.disable {name: X}` when the request never named X gets a **formal question** back, not an
+execution). It exists because 160 measured runs showed an ambiguous imperative reads as
+authorisation at every link of the chain: ask "remove the old plugin" and a sampled candidate dies,
+with no fact saying why. With the contract declared, an unnamed target becomes a question instead.
+The doubt belongs to the operation that discovers a concrete operation cannot exist yet.
+
 ## Requirements
 
 - PHP **≥ 8.3**

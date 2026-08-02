@@ -55,6 +55,21 @@ readonly class Operation
         public ?string $path = null,
         public ?array $surfaces = null,
         public ?string $permission = null,
+        /**
+         * El argumento cuyo valor debe venir NOMBRADO por el humano en la petición, o `null` si esta
+         * operación no lo exige.
+         *
+         * Es el contrato de intención de ADR-0044: la duda no la detecta un modelo, la declara la
+         * operación. Q-P19-K midió el costo de que nadie la declarara — ante «quita el plugin viejo»,
+         * tres corridas mataron un plugin, tres otro, diez ninguno, y ningún hecho dice por qué. Con
+         * esto declarado, un objetivo que la petición no nombra no se ejecuta: se pregunta, con la
+         * operación y los argumentos en la pregunta.
+         *
+         * Quién lo hace valer no es esta clase: es el piso de la sesión, que ya es la autoridad
+         * no-persuadible y la única que ve los argumentos concretos. Declarar sin ese piso no hace
+         * nada — a propósito: un contrato es una exigencia, no una conducta.
+         */
+        public ?string $namedTarget = null,
     ) {
         if ($this->scopes !== [] && $this->permission !== null) {
             throw new \InvalidArgumentException(
