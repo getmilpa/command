@@ -10,7 +10,7 @@
     "value-object",
     "surface-agnostic"
   ],
-  "type": "library",
+  "type": "milpa-capability",
   "license": "Apache-2.0",
   "authors": [
     {
@@ -38,6 +38,26 @@
     "psr-4": {
       "Milpa\\Command\\Tests\\": "tests/",
       "Milpa\\Docs\\": "vendor/milpa/core/tools/gen-docs/"
+    }
+  },
+  "extra": {
+    "milpa": {
+      "capability": {
+        "id": "command",
+        "title": "One operation, every surface: CLI, MCP and HTTP from a single declaration",
+        "unlocks": [
+          "coa <operaci\u00f3n>"
+        ],
+        "provides": [
+          "command.operations",
+          "command.projector"
+        ],
+        "briefing": "This app declares operations once and they reach every surface.",
+        "contracts": {
+          "command.operations": "Milpa\\Command\\Operation",
+          "command.projector": "Milpa\\Command\\CommandProvider"
+        }
+      }
     }
   }
 }
