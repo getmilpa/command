@@ -14,6 +14,9 @@ declare(strict_types=1);
 
 namespace Milpa\Command;
 
+use Milpa\Command\Effect\EffectProfile;
+use Milpa\Command\Effect\Mutation;
+
 /**
  * The atom: one operation defined once — schema of inputs + handler + metadata — that the family
  * projects to N surfaces (CLI, MCP, HTTP, web, TUI). A `SurfaceProjector` turns this into each
@@ -70,7 +73,38 @@ readonly class Operation
          * nada — a propósito: un contrato es una exigencia, no una conducta.
          */
         public ?string $namedTarget = null,
+        /**
+         * What this operation can do AT WORST — the ceiling, declared by the operation itself.
+         *
+         * `null` means unclassified, and unclassified is NOT «harmless». Under GOV-05 an operation
+         * that never declared its effects carries the ceiling of every dimension: unknown mutation,
+         * unknown externality, unknown reversibility, unknown authority. That is deliberately
+         * unusable for anything sensitive, and the pressure it creates is the point — the way out is
+         * to classify, never to invent a permissive default (GOV-13).
+         *
+         * It does not replace `$mutating`, which eight consumers across four packages already read.
+         * It REFINES it: `mutating` says whether, this says what kind, how far it reaches, whether
+         * it can be taken back, and whose authority it spends. The two cannot contradict each other,
+         * because the contradiction is refused below at construction rather than resolved by
+         * whichever consumer happens to read first.
+         */
+        public ?EffectProfile $effects = null,
     ) {
+        // A SECOND SOURCE OF TRUTH IS REFUSED AT DECLARATION, not reconciled at read time.
+        //
+        // `mutating: true` with `Mutation::None` is not a state anyone should have to resolve later;
+        // it is a statement that contradicts itself, and every consumer that reads one of the two
+        // fields would get a different answer depending on which one it happens to read. This
+        // repository has caught that exact shape four times in a week, always through the consumer
+        // that read the stale one.
+        if ($this->mutating && $this->effects?->mutation === Mutation::None) {
+            throw new \InvalidArgumentException(
+                "Operation '{$this->name}' declares mutating: true and an effect profile with "
+                . 'mutation: none. One of the two is wrong, and no consumer can be asked to guess '
+                . 'which — declare the mutation this operation actually performs.'
+            );
+        }
+
         if ($this->scopes !== [] && $this->permission !== null) {
             throw new \InvalidArgumentException(
                 "Operation '{$this->name}' declares BOTH scopes and a permission. In this release an "
@@ -78,6 +112,19 @@ readonly class Operation
                 . '(allOf/anyOf) is a deliberate future move, not an implicit "both must pass".'
             );
         }
+    }
+
+    /**
+     * The effect ceiling of this operation — never `null`.
+     *
+     * An operation that declared nothing gets `unclassified()`, which is every dimension at its
+     * maximum. Callers therefore never have to write `?? something-safe`, and cannot accidentally
+     * write `?? readOnly()` — which is precisely the permissive default GOV-13 forbids and the shape
+     * a tired reviewer would wave through.
+     */
+    public function effectCeiling(): EffectProfile
+    {
+        return $this->effects ?? EffectProfile::unclassified();
     }
 
     /**
