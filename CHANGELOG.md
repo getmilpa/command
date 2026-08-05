@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/getmilpa/command/compare/v0.5.1...v0.6.0) (2026-08-05)
+
+
+### Features
+
+* **effect:** el techo de efecto de una operación, en cuatro dimensiones ([772e5c1](https://github.com/getmilpa/command/commit/772e5c1d3274946f9915e85db0a2432d81961828))
+
 ## [0.5.1](https://github.com/getmilpa/command/compare/v0.5.0...v0.5.1) (2026-08-04)
 
 
