@@ -63,6 +63,14 @@ final class EffectProfile
         public readonly Authority $authority = Authority::Unknown,
         public readonly array $escalatesOn = [],
         /**
+         * What the change is made OF — the only axis here that does not answer «how much».
+         *
+         * It arrives fifth because the other four were measured NOT to discriminate: eight
+         * operations, half of them demanding a signature and half not, came out identical on
+         * mutation, externality, reversibility and authority. See {@see Subject}.
+         */
+        public readonly Subject $subject = Subject::Unknown,
+        /**
          * The rollback contract, when reversibility claims to be `Guaranteed`.
          *
          * Required for that one level and for no other, because `Guaranteed` is the only claim that
@@ -71,6 +79,21 @@ final class EffectProfile
          */
         public readonly ?string $rollbackContract = null,
     ) {
+        // A READ HAS NO SUBJECT, AND SAYING OTHERWISE IS IMPOSSIBLE RATHER THAN MERELY WRONG.
+        //
+        // Four blind judges classified thirty-three operations from the definition alone, and every
+        // disagreement they produced landed on an operation that changes nothing at all: they were
+        // being asked what a read is made of. `Mutation::None` already answers that nothing changes,
+        // so the two are made to agree by construction — the same treatment the guaranteed-rollback
+        // claim gets below, and for the same reason: a contradiction that cannot be declared never
+        // has to be caught by a reviewer.
+        if ($mutation === Mutation::None && $subject !== Subject::None && $subject !== Subject::Unknown) {
+            throw new \InvalidArgumentException(
+                'an operation that changes nothing cannot declare a subject: `Mutation::None` and '
+                . '«' . $subject->value . '» disagree about whether anything happens'
+            );
+        }
+
         if ($reversibility === Reversibility::Guaranteed && ($rollbackContract === null || trim($rollbackContract) === '')) {
             throw new \InvalidArgumentException(
                 'reversibility «guaranteed» requires a rollback contract: a claim that lowers scrutiny '
@@ -100,6 +123,7 @@ final class EffectProfile
             Externality::None,
             Reversibility::Guaranteed,
             Authority::Read,
+            subject: Subject::None,
             rollbackContract: 'nothing-to-roll-back',
         );
     }
@@ -115,7 +139,8 @@ final class EffectProfile
         return $this->mutation !== Mutation::Unknown
             && $this->externality !== Externality::Unknown
             && $this->reversibility !== Reversibility::Unknown
-            && $this->authority !== Authority::Unknown;
+            && $this->authority !== Authority::Unknown
+            && $this->subject !== Subject::Unknown;
     }
 
     /**
@@ -133,6 +158,7 @@ final class EffectProfile
             $this->reversibility->weight() >= $other->reversibility->weight() ? $this->reversibility : $other->reversibility,
             $this->authority->weight() >= $other->authority->weight() ? $this->authority : $other->authority,
             array_values(array_unique([...$this->escalatesOn, ...$other->escalatesOn])),
+            $this->subject->weight() >= $other->subject->weight() ? $this->subject : $other->subject,
             // The joined profile keeps a rollback contract ONLY while both sides still guarantee it.
             // Joining a guaranteed operation with an irreversible one does not produce something
             // half-recoverable; it produces something irreversible, and the contract no longer applies.
@@ -178,6 +204,7 @@ final class EffectProfile
             'externality' => $this->externality->value,
             'reversibility' => $this->reversibility->value,
             'authority' => $this->authority->value,
+            'subject' => $this->subject->value,
             'escalates_on' => $this->escalatesOn,
             'rollback_contract' => $this->rollbackContract,
             'fully_classified' => $this->isFullyClassified(),
