@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/getmilpa/command/compare/v0.6.0...v0.7.0) (2026-08-09)
+
+
+### Features
+
+* **effect:** a fifth dimension — what the change is made OF, not how much of it there is ([222018a](https://github.com/getmilpa/command/commit/222018af2ca3a881eac9e0b1e8610c706cadb124))
+
 ## [0.6.0](https://github.com/getmilpa/command/compare/v0.5.1...v0.6.0) (2026-08-05)
 
 
