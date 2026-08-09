@@ -9,6 +9,7 @@ use Milpa\Command\Effect\EffectProfile;
 use Milpa\Command\Effect\Externality;
 use Milpa\Command\Effect\Mutation;
 use Milpa\Command\Effect\Reversibility;
+use Milpa\Command\Effect\Subject;
 use Milpa\Command\Operation;
 use PHPUnit\Framework\TestCase;
 
@@ -130,6 +131,7 @@ final class EffectProfileTest extends TestCase
         $unclassified = EffectProfile::unclassified()->toArray();
         self::assertFalse($unclassified['fully_classified']);
         self::assertSame('unknown', $unclassified['mutation']);
+        self::assertSame('unknown', $unclassified['subject']);
         self::assertSame([], $unclassified['escalates_on']);
 
         $classified = (new EffectProfile(
@@ -138,8 +140,12 @@ final class EffectProfileTest extends TestCase
             Reversibility::Irreversible,
             Authority::WriteAsUser,
             escalatesOn: ['path'],
+            subject: Subject::Executable,
         ))->toArray();
         self::assertTrue($classified['fully_classified']);
+        // A dimension that does not travel in the payload is a dimension a JSON consumer cannot
+        // read, which is the same as not having it for everyone outside this process.
+        self::assertSame('executable', $classified['subject']);
         self::assertSame(['path'], $classified['escalates_on']);
         self::assertNull($classified['rollback_contract']);
     }
@@ -200,7 +206,15 @@ final class EffectProfileTest extends TestCase
             'x',
             static fn (): array => [],
             mutating: true,
-            effects: new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::ManualRecovery, Authority::WriteAsUser),
+            // The fifth dimension is part of «fully» now: four answers about how much and none
+            // about of what is not a classification, it is a classification with a hole.
+            effects: new EffectProfile(
+                Mutation::Persistent,
+                Externality::None,
+                Reversibility::ManualRecovery,
+                Authority::WriteAsUser,
+                subject: Subject::Data,
+            ),
         );
 
         self::assertTrue($op->effectCeiling()->isFullyClassified());
