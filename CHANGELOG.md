@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/getmilpa/command/compare/v0.7.0...v0.8.0) (2026-08-12)
+
+
+### Features
+
+* an argument may lower the ceiling for one call, and it is not believed on its word ([#11](https://github.com/getmilpa/command/issues/11)) ([7ff85f4](https://github.com/getmilpa/command/commit/7ff85f40b86db7a8df0c19b57a9aa8874dd4518a))
+
 ## [0.7.0](https://github.com/getmilpa/command/compare/v0.6.0...v0.7.0) (2026-08-09)
 
 
