@@ -78,6 +78,16 @@ final class EffectProfile
          * that backs it, or it is exactly the self-certification GOV-00 exists to forbid.
          */
         public readonly ?string $rollbackContract = null,
+        /**
+         * Arguments that LOWER this ceiling for one call — the dangerous direction (decisions/0029).
+         *
+         * LAST on purpose: every existing positional construction — join() among them — keeps
+         * working untouched, and a new field that renumbers the old ones would break callers to
+         * make room for something they never asked for.
+         *
+         * @var list<Descent>
+         */
+        public readonly array $descents = [],
     ) {
         // A READ HAS NO SUBJECT, AND SAYING OTHERWISE IS IMPOSSIBLE RATHER THAN MERELY WRONG.
         //
@@ -166,6 +176,30 @@ final class EffectProfile
                 ? $this->rollbackContract
                 : null,
         );
+    }
+
+    /**
+     * The ceiling THIS CALL carries, once its arguments are known.
+     *
+     * Escalation is not resolved here and must not be: `unresolvedEscalators()` answers a different
+     * question — «is the ceiling still the ceiling?» — and while it returns anything the answer is
+     * yes. This only ever descends.
+     *
+     * A descent that does not hold is ignored in silence rather than raising, because a call that
+     * refuses to run because someone declared badly punishes the caller for the author's mistake.
+     * The one that stops is the ceiling: it simply does not come down.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    public function forCall(array $arguments): self
+    {
+        foreach ($this->descents as $descent) {
+            if ($descent->triggeredBy($arguments) && $descent->holds($this)) {
+                return $descent->to;
+            }
+        }
+
+        return $this;
     }
 
     /**
