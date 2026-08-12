@@ -51,7 +51,11 @@ final readonly class Descent
     ) {
     }
 
-    /** Does this call trigger the descent? Identity on the value, so a different one does not. */
+    /**
+     * Does this call trigger the descent? Identity on the value, so a different one does not.
+     *
+     * @param array<string, mixed> $arguments
+     */
     public function triggeredBy(array $arguments): bool
     {
         return \array_key_exists($this->argument, $arguments)
