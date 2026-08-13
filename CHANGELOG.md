@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/getmilpa/command/compare/v0.8.0...v0.9.0) (2026-08-13)
+
+
+### Features
+
+* consent happens once — the canonical grant and the identity that is not spelled ([#14](https://github.com/getmilpa/command/issues/14)) ([8651dda](https://github.com/getmilpa/command/commit/8651ddac07f9529b52a72a446eb2d77a7c8b4bce))
+
 ## [0.8.0](https://github.com/getmilpa/command/compare/v0.7.0...v0.8.0) (2026-08-12)
 
 
