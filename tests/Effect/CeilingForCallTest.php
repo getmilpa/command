@@ -16,6 +16,8 @@ namespace Milpa\Command\Tests\Effect;
 
 use Milpa\Command\Effect\Authority;
 use Milpa\Command\Effect\Descent;
+use Milpa\Command\Effect\ContextFacts;
+use Milpa\Command\Effect\DeclaredAuthorityPolicy;
 use Milpa\Command\Effect\DescentCertificate;
 use Milpa\Command\Effect\EffectProfile;
 use Milpa\Command\Effect\Externality;
@@ -34,6 +36,18 @@ use PHPUnit\Framework\TestCase;
  */
 final class CeilingForCallTest extends TestCase
 {
+    /** The destination lowers authority, whose producer is the policy now (decisions/0054). */
+    private function conJuicio(array $arguments, \Milpa\Command\Operation $op): \Milpa\Command\Effect\EffectProfile
+    {
+        return $op->ceilingForCall(
+            $arguments,
+            new DeclaredAuthorityPolicy('bateria', [
+                'capabilities:enable' => ['scopes' => [], 'authority' => Authority::Read],
+            ]),
+            new ContextFacts(principal: 'rod', verified: true),
+        );
+    }
+
     private string $publica = '';
 
     private string $privada = '';
@@ -50,7 +64,7 @@ final class CeilingForCallTest extends TestCase
     {
         $operacion = $this->operacion(static fn (): string => 'the rehearsal prints and returns');
 
-        self::assertSame(Subject::None, $operacion->ceilingForCall(['dry_run' => true])->subject);
+        self::assertSame(Subject::None, $this->conJuicio(['dry_run' => true], $operacion)->subject);
     }
 
     /**
@@ -67,7 +81,7 @@ final class CeilingForCallTest extends TestCase
 
         $operacion = $this->operacion($otro, vigilado: $vigilado);
 
-        self::assertSame(Subject::Executable, $operacion->ceilingForCall(['dry_run' => true])->subject);
+        self::assertSame(Subject::Executable, $this->conJuicio(['dry_run' => true], $operacion)->subject);
     }
 
     /** 3 · without the argument nothing moves, certificate or not. */
