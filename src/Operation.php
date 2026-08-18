@@ -128,6 +128,58 @@ readonly class Operation
     }
 
     /**
+     * The ceiling THIS CALL carries, with the handler that is about to run named.
+     *
+     * The operation is the only place holding both the handler and its declared effects, so it is
+     * the only honest place to join them: a caller computing the digest itself would either hand out
+     * descents nobody watched or refuse ones that were earned.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    public function ceilingForCall(array $arguments): EffectProfile
+    {
+        return $this->effectCeiling()->forCall($arguments, $this->handlerDigest());
+    }
+
+    /**
+     * The digest of the handler body, which is what a descent certificate is bound to.
+     *
+     * ITS LIMIT IS PART OF THE CONTRACT, not an oversight: this hashes the CODE OF THE HANDLER ITSELF.
+     * A handler that delegates changes behaviour without changing this digest, so a certificate stays
+     * valid across a change it never watched. Saying so is half the value — greenhouse
+     * decisions/0050 `F-3` exists to be paid, and hiding it would turn currency into a promise.
+     *
+     * `null` when the handler cannot be read, and `null` buys nothing: a descent whose certificate
+     * cannot be compared does not lower anything.
+     */
+    public function handlerDigest(): ?string
+    {
+        if (! \is_callable($this->handler)) {
+            return null;
+        }
+
+        try {
+            $reflejo = new \ReflectionFunction(\Closure::fromCallable($this->handler));
+        } catch (\ReflectionException) {
+            return null;
+        }
+
+        $archivo = $reflejo->getFileName();
+        if ($archivo === false || $reflejo->getStartLine() === false || $reflejo->getEndLine() === false) {
+            return null;
+        }
+
+        $lineas = file($archivo);
+        if ($lineas === false) {
+            return null;
+        }
+
+        $cuerpo = \array_slice($lineas, $reflejo->getStartLine() - 1, $reflejo->getEndLine() - $reflejo->getStartLine() + 1);
+
+        return 'sha256:' . hash('sha256', implode('', $cuerpo));
+    }
+
+    /**
      * Whether this operation is projected to the given surface. `null` $surfaces means every
      * surface; a list is an explicit opt-in.
      */

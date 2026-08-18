@@ -189,12 +189,16 @@ final class EffectProfile
      * refuses to run because someone declared badly punishes the caller for the author's mistake.
      * The one that stops is the ceiling: it simply does not come down.
      *
+     * The handler digest travels because greenhouse decisions/0050 made a descent depend on evidence
+     * bound to the code that will run. A caller that cannot say which handler that is gets no
+     * descent: not being able to look is not the same as having looked and found nothing.
+     *
      * @param array<string, mixed> $arguments
      */
-    public function forCall(array $arguments): self
+    public function forCall(array $arguments, ?string $handlerDigest = null): self
     {
         foreach ($this->descents as $descent) {
-            if ($descent->triggeredBy($arguments) && $descent->holds($this)) {
+            if ($descent->triggeredBy($arguments) && $descent->holds($this, $handlerDigest)) {
                 return $descent->to;
             }
         }
