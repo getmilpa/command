@@ -38,16 +38,18 @@ namespace Milpa\Command\Effect;
 final readonly class Descent
 {
     /**
-     * @param string        $argument  the input key whose presence triggers this descent
-     * @param mixed         $whenValue the value that triggers it — identity, so `--dry-run=false` is not a descent
-     * @param EffectProfile $to        the ceiling this call actually carries, in full
-     * @param string        $because   what makes it true, and without which nothing is lowered
+     * @param string                  $argument    the input key whose presence triggers this descent
+     * @param mixed                   $whenValue   the value that triggers it — identity, so `--dry-run=false` is not a descent
+     * @param EffectProfile           $to          the ceiling this call actually carries, in full
+     * @param string                  $because     what makes it true — narrative evidence for whoever reads, and no longer the key
+     * @param DescentCertificate|null $certificate the evidence that actually lowers the ceiling; without it nothing comes down
      */
     public function __construct(
         public string $argument,
         public mixed $whenValue,
         public EffectProfile $to,
         public string $because,
+        public ?DescentCertificate $certificate = null,
     ) {
     }
 
@@ -67,10 +69,29 @@ final readonly class Descent
      *
      * A reason is required, and the destination has to be genuinely lighter on every axis. A descent
      * that raises anything is not a descent — it would be a back door for climbing without saying so.
+     *
+     * AND SINCE greenhouse decisions/0050, A REASON IS NOT ENOUGH. Until then a non-empty `because`
+     * was the entire mechanism: whoever declared a descent was believed, so lying bought an exemption
+     * rather than costing one — measured in `evidence/0238`, where a handler did exactly what its
+     * descent denied and got both the lowered ceiling and the gate's silence.
+     *
+     * The certificate answers four questions nobody has to be trusted about, and any «no» leaves the
+     * ceiling where it was: does it speak about THIS predicate, was it earned watching THIS handler,
+     * does it justify THIS destination, and did a control demonstrate every axis this descent lowers.
      */
-    public function holds(EffectProfile $original): bool
+    public function holds(EffectProfile $original, ?string $handlerDigest = null): bool
     {
         if (trim($this->because) === '') {
+            return false;
+        }
+
+        if (
+            $this->certificate === null
+            || ! $this->certificate->speaksAbout($this)
+            || ! $this->certificate->watched($handlerDigest)
+            || $this->certificate->to != $this->to
+            || ! $this->certificate->coversAll($this->loweredAxes($original))
+        ) {
             return false;
         }
 
@@ -79,5 +100,22 @@ final readonly class Descent
             && $this->to->reversibility->weight() <= $original->reversibility->weight()
             && $this->to->authority->weight() <= $original->authority->weight()
             && $this->to->subject->weight() <= $original->subject->weight();
+    }
+
+    /**
+     * The axes this descent actually brings down, which are exactly the ones that need evidence.
+     *
+     * @return list<string>
+     */
+    private function loweredAxes(EffectProfile $original): array
+    {
+        $bajan = [];
+        foreach (['mutation', 'externality', 'reversibility', 'authority', 'subject'] as $eje) {
+            if ($this->to->{$eje}->weight() < $original->{$eje}->weight()) {
+                $bajan[] = $eje;
+            }
+        }
+
+        return $bajan;
     }
 }
