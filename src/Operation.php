@@ -158,18 +158,9 @@ readonly class Operation
             return null;
         }
 
-        try {
-            $reflejo = new \ReflectionFunction(\Closure::fromCallable($this->handler));
-        } catch (\ReflectionException) {
-            return null;
-        }
-
+        $reflejo = new \ReflectionFunction(\Closure::fromCallable($this->handler));
         $archivo = $reflejo->getFileName();
-        if ($archivo === false || $reflejo->getStartLine() === false || $reflejo->getEndLine() === false) {
-            return null;
-        }
-
-        $lineas = file($archivo);
+        $lineas = $archivo === false ? false : file($archivo);
         if ($lineas === false) {
             return null;
         }

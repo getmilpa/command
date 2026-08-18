@@ -76,6 +76,61 @@ final class CeilingForCallTest extends TestCase
         self::assertIsString($operacion->handlerDigest());
     }
 
+    /**
+     * 5 · a handler nobody can reflect on cannot be compared, so it buys no descent.
+     *
+     * `null` is not the benefit of the doubt here: not being able to look is not the same as having
+     * looked and found nothing — the pattern this house has spent six measurements on.
+     */
+    public function testAHandlerThatCannotBeReadBuysNoDescent(): void
+    {
+        $noInvocable = $this->operacion(static fn (): string => 'watched');
+        $roto = new Operation(
+            name: $noInvocable->name,
+            description: $noInvocable->description,
+            handler: 'this string is not callable',
+            effects: $noInvocable->effects,
+        );
+
+        self::assertNull($roto->handlerDigest());
+        self::assertSame(Subject::Executable, $roto->ceilingForCall(['dry_run' => true])->subject);
+    }
+
+    /** 6 · an internal function has no file to hash, and a digest nobody can compute is not one. */
+    public function testAnInternalFunctionHasNoDigest(): void
+    {
+        $vigilado = $this->operacion(static fn (): string => 'watched');
+        $interna = new Operation(
+            name: $vigilado->name,
+            description: $vigilado->description,
+            handler: 'strlen',
+            effects: $vigilado->effects,
+        );
+
+        self::assertNull($interna->handlerDigest());
+        self::assertSame(Subject::Executable, $interna->ceilingForCall(['dry_run' => true])->subject);
+    }
+
+    /** 7 · a certificate that never named a handler names nothing to compare against. */
+    public function testACertificateWithoutAHandlerNamesNothingToCompare(): void
+    {
+        $certificado = new DescentCertificate(
+            verifier: 'verify-descent/2026-08-18',
+            predicate: ['dry_run' => true],
+            covers: ['mutation'],
+            to: new EffectProfile(
+                mutation: Mutation::None,
+                externality: Externality::None,
+                reversibility: Reversibility::Guaranteed,
+                authority: Authority::Read,
+                subject: Subject::None,
+                rollbackContract: 'nothing ran',
+            ),
+        );
+
+        self::assertFalse($certificado->watched('sha256:whatever-the-caller-offers'));
+    }
+
     /** An operation that installs, unless it is only rehearsing — the shape that forced all of this. */
     private function operacion(callable $handler, ?callable $vigilado = null): Operation
     {
