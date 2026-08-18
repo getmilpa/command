@@ -64,6 +64,47 @@ final class AuthorityIsJudgedTest extends TestCase
         self::assertSame(Mutation::None, $techo->forCall(['dry_run' => true], $this->sujeto())->mutation);
     }
 
+    /**
+     * 1b · A DESCENT THAT LOWERS ONLY AUTHORITY NEEDS ONLY THE POLICY — no certificate at all.
+     *
+     * greenhouse evidence/0255 measured this on cattle with a real signature: a probe whose descent
+     * lowers authority alone, admitted under a valid judgment, did NOT come down — because holds()
+     * required a signed certificate even though the only lowered axis is one the certificate has no
+     * say over. That couples two producers decisions/0053 said must be independent: each axis is
+     * reduced only by ITS producer. Authority's producer is the policy; the certificate gates the
+     * axes it covers, and when it covers none it is simply not consulted.
+     */
+    public function testADescentLoweringOnlyAuthorityNeedsNoCertificate(): void
+    {
+        // Same heavy ceiling, but the destination lowers ONLY authority — nothing for a certificate
+        // to cover — and the descent carries no certificate.
+        $soloAutoridad = new EffectProfile(
+            mutation: Mutation::Persistent,
+            externality: Externality::ThirdParty,
+            reversibility: Reversibility::Compensatable,
+            authority: Authority::Read,
+            subject: Subject::Executable,
+        );
+        $techo = new EffectProfile(
+            mutation: Mutation::Persistent,
+            externality: Externality::ThirdParty,
+            reversibility: Reversibility::Compensatable,
+            authority: Authority::Privileged,
+            subject: Subject::Executable,
+            descents: [new Descent(
+                argument: 'dry_run',
+                whenValue: true,
+                to: $soloAutoridad,
+                because: 'the policy judges who may rehearse without privilege',
+                certificate: null,
+            )],
+        );
+
+        self::assertSame(Authority::Read, $techo->forCall(['dry_run' => true], $this->sujeto())->authority);
+        // And the control that keeps this honest: without a judgment, it stays up.
+        self::assertSame(Authority::Privileged, $techo->forCall(['dry_run' => true], new CallSubject('capabilities:enable', self::DIGEST))->authority);
+    }
+
     /** 2 · F-3 of decisions/0053: a signed certificate whose covers says «authority» buys nothing THERE. */
     public function testACertificateCoveringAuthorityDoesNotJudgeIt(): void
     {
