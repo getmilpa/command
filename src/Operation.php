@@ -138,7 +138,7 @@ readonly class Operation
      */
     public function ceilingForCall(array $arguments): EffectProfile
     {
-        return $this->effectCeiling()->forCall($arguments, $this->handlerDigest());
+        return $this->effectCeiling()->forCall($arguments, new Effect\CallSubject($this->name, $this->handlerDigest()));
     }
 
     /**

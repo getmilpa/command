@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Milpa\Command\Tests\Effect;
 
 use Milpa\Command\Effect\Authority;
+use Milpa\Command\Effect\CallSubject;
 use Milpa\Command\Effect\Descent;
 use Milpa\Command\Effect\DescentCertificate;
 use Milpa\Command\Effect\EffectProfile;
@@ -40,14 +41,34 @@ final class DescentTest extends TestCase
     /** The digest the caller offers for the handler that is about to run. */
     private const DIGEST = 'sha256:the-handler-the-verifier-watched';
 
+    /** The operation this whole battery is about. */
+    private const OPERACION = 'capabilities:enable';
+
+    private string $publica = '';
+
+    private string $privada = '';
+
+    protected function setUp(): void
+    {
+        $par = sodium_crypto_sign_keypair();
+        $this->publica = base64_encode(sodium_crypto_sign_publickey($par));
+        $this->privada = sodium_crypto_sign_secretkey($par);
+    }
+
+    /** What the call is about to run — the operation and the handler, which travel together. */
+    private function sujeto(string $operacion = self::OPERACION, ?string $digest = self::DIGEST): CallSubject
+    {
+        return new CallSubject($operacion, $digest);
+    }
+
 
     /** 1 · with the argument AND a certificate that covers it, the declared destination is what the call carries. */
     public function testTheDeclaredArgumentLowersTheCeilingForThatCall(): void
     {
         $techo = $this->instala();
 
-        self::assertSame(Subject::None, $techo->forCall(['dry_run' => true], self::DIGEST)->subject);
-        self::assertSame(Mutation::None, $techo->forCall(['dry_run' => true], self::DIGEST)->mutation);
+        self::assertSame(Subject::None, $techo->forCall(['dry_run' => true], $this->sujeto())->subject);
+        self::assertSame(Mutation::None, $techo->forCall(['dry_run' => true], $this->sujeto())->mutation);
     }
 
     /** 2 · THE CONTROL: without it, nothing moves. */
@@ -55,8 +76,8 @@ final class DescentTest extends TestCase
     {
         $techo = $this->instala();
 
-        self::assertSame(Subject::Executable, $techo->forCall([], self::DIGEST)->subject);
-        self::assertSame(Subject::Executable, $techo->forCall(['other' => true], self::DIGEST)->subject);
+        self::assertSame(Subject::Executable, $techo->forCall([], $this->sujeto())->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['other' => true], $this->sujeto())->subject);
     }
 
     /** 3 · a descent with no reason lowers nothing — failing upwards is the only affordable failure. */
@@ -64,7 +85,7 @@ final class DescentTest extends TestCase
     {
         $techo = $this->instala(razon: '   ');
 
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], self::DIGEST)->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], $this->sujeto())->subject);
     }
 
     /** 4 · a «descent» to a HIGHER ceiling is not a back door for climbing quietly. */
@@ -95,8 +116,8 @@ final class DescentTest extends TestCase
     {
         $techo = $this->instala();
 
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => false], self::DIGEST)->subject);
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => 'yes'], self::DIGEST)->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => false], $this->sujeto())->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => 'yes'], $this->sujeto())->subject);
     }
 
     /**
@@ -110,8 +131,8 @@ final class DescentTest extends TestCase
     {
         $techo = $this->instala(certificado: null);
 
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], self::DIGEST)->subject);
-        self::assertSame(Mutation::Persistent, $techo->forCall(['dry_run' => true], self::DIGEST)->mutation);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], $this->sujeto())->subject);
+        self::assertSame(Mutation::Persistent, $techo->forCall(['dry_run' => true], $this->sujeto())->mutation);
     }
 
     /** 7 · a certificate earned by OTHER arguments is a borrowed one — `F-2` of decisions/0045. */
@@ -119,7 +140,7 @@ final class DescentTest extends TestCase
     {
         $techo = $this->instala(certificado: $this->certificado(predicado: ['dry_run' => 'yes']));
 
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], self::DIGEST)->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], $this->sujeto())->subject);
     }
 
     /** 8 · the handler moved, so what the verifier watched is not what will run — `F-3` of decisions/0045. */
@@ -127,7 +148,7 @@ final class DescentTest extends TestCase
     {
         $techo = $this->instala(certificado: $this->certificado(handler: 'sha256:something-else'));
 
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], self::DIGEST)->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], $this->sujeto())->subject);
     }
 
     /**
@@ -140,7 +161,7 @@ final class DescentTest extends TestCase
     {
         $techo = $this->instala(certificado: $this->certificado(cubre: ['mutation', 'subject']));
 
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], self::DIGEST)->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], $this->sujeto())->subject);
     }
 
     /** 10 · the certificate justified one destination and the descent declares another. */
@@ -155,7 +176,7 @@ final class DescentTest extends TestCase
             rollbackContract: 'a different destination than the one this descent declares',
         )));
 
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], self::DIGEST)->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], $this->sujeto())->subject);
     }
 
     /** 11 · the caller cannot say which handler is about to run, so nothing can be checked, so nothing descends. */
@@ -163,7 +184,7 @@ final class DescentTest extends TestCase
     {
         $techo = $this->instala();
 
-        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true])->subject);
+        self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], $this->sujeto(digest: null))->subject);
     }
 
     /** The shape of the operation that forced this: installs code, unless it is only rehearsing. */
@@ -207,13 +228,15 @@ final class DescentTest extends TestCase
         ?EffectProfile $hacia = null,
         ?string $handler = self::DIGEST,
     ): DescentCertificate {
-        return new DescentCertificate(
+        return (new DescentCertificate(
             verifier: 'verify-descent+observe-network/2026-08-18',
+            operation: self::OPERACION,
             predicate: $predicado,
             covers: $cubre,
             to: $hacia ?? $this->destino(),
             handlerSha256: $handler,
-        );
+            verifierPublicKey: $this->publica,
+        ))->signedWith($this->privada);
     }
 
     /** Where this descent lands, in full — the same object the descent declares. */

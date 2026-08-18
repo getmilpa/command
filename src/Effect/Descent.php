@@ -75,11 +75,17 @@ final readonly class Descent
      * rather than costing one — measured in `evidence/0238`, where a handler did exactly what its
      * descent denied and got both the lowered ceiling and the gate's silence.
      *
-     * The certificate answers four questions nobody has to be trusted about, and any «no» leaves the
-     * ceiling where it was: does it speak about THIS predicate, was it earned watching THIS handler,
-     * does it justify THIS destination, and did a control demonstrate every axis this descent lowers.
+     * The certificate answers five questions nobody has to be trusted about, and any «no» leaves the
+     * ceiling where it was: did this payload come from the certifier at all (greenhouse
+     * decisions/0051), does it speak about THIS operation and THESE arguments, was it earned watching
+     * THIS handler, does it justify THIS destination, and did a control demonstrate every axis this
+     * descent lowers.
+     *
+     * The signature is asked first because it is the cheapest and because everything after it is
+     * meaningless without it: `evidence/0249` deleted the artifact, rewrote it by hand, and every
+     * other check passed with flying colours.
      */
-    public function holds(EffectProfile $original, ?string $handlerDigest = null): bool
+    public function holds(EffectProfile $original, ?CallSubject $subject = null): bool
     {
         if (trim($this->because) === '') {
             return false;
@@ -87,8 +93,9 @@ final readonly class Descent
 
         if (
             $this->certificate === null
-            || ! $this->certificate->speaksAbout($this)
-            || ! $this->certificate->watched($handlerDigest)
+            || ! $this->certificate->signedByItsVerifier()
+            || ! $this->certificate->speaksAbout($this, $subject)
+            || ! $this->certificate->watched($subject?->handlerDigest)
             || $this->certificate->to != $this->to
             || ! $this->certificate->coversAll($this->loweredAxes($original))
         ) {
