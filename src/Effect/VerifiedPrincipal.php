@@ -22,10 +22,13 @@ namespace Milpa\Command\Effect;
  * no authority field. An authenticator that named authority would have made the channel a legislator
  * — the collapse decisions/0031 separated between a token and a principal.
  *
- * THE ONE INVARIANT: no later layer may RAISE the grade this carries. `verified` is true only when a
- * proof travels with it — a method and an issuer. A bare «verified: true» with nothing behind it is
- * the editable covers of evidence/0249, one field over, and {@see fromArray()} refuses to honour it.
- * A translation downstream may lower confidence; it may never invent it.
+ * THE ONE INVARIANT: a verified grade is PRODUCED by re-verifying a proof, never READ from a stored
+ * field. greenhouse evidence/0254 forged the old version — verified:true with a plausible method and
+ * issuer, hand-written — and authority came down, because a string is not a proof. So the grade has
+ * exactly one door, {@see admit()}, which a channel calls after it has re-verified. {@see fromArray()}
+ * reconstructs the ASSERTION and NEVER carries the grade across the data boundary: what is persisted
+ * is the signed assertion, re-verified on admission, which is the receipt doctrine of decisions/0053
+ * made mandatory for identity — a verified fact is a receipt, not currency.
  */
 final readonly class VerifiedPrincipal
 {
@@ -37,7 +40,7 @@ final readonly class VerifiedPrincipal
      * @param string|null  $method    how it was proved (e.g. `gpg-detached`) — half of the proof
      * @param string|null  $issuer    who did the proving (e.g. a keyring, an IdP) — the other half
      */
-    public function __construct(
+    private function __construct(
         public string $principal,
         public bool $verified = false,
         public ?string $channel = null,
@@ -45,6 +48,19 @@ final readonly class VerifiedPrincipal
         public ?string $method = null,
         public ?string $issuer = null,
     ) {
+    }
+
+    /**
+     * The one door to a verified grade: a channel calls this AFTER it has re-verified a proof, live.
+     *
+     * The constructor is private precisely so no caller can hand-build a verified principal from
+     * data — the grade cannot exist without a channel having just checked the proof that backs it.
+     *
+     * @param list<string> $scopes
+     */
+    public static function admit(string $principal, string $channel, array $scopes, string $method, string $issuer): self
+    {
+        return new self($principal, true, $channel, $scopes, $method, $issuer);
     }
 
     /**
@@ -59,16 +75,17 @@ final readonly class VerifiedPrincipal
             principal: 'cli:' . ($user ?? 'desconocido') . '@' . ($host ?? 'desconocido'),
             verified: false,
             channel: 'cli',
-        );
+        );  // never verified: there is no proof to re-check
     }
 
     /**
-     * Reconstruct from a payload, and NEVER raise the grade.
+     * Reconstruct the ASSERTION from a payload — and NEVER the grade.
      *
-     * `verified` is honoured only when the proof travels too: a method AND an issuer. This is the
-     * invariant of decisions/0055 enforced at the one place a forger would attack — a stored blob
-     * they can edit. Editing `verified` to true without also fabricating a coherent proof buys
-     * nothing, exactly as editing `covers` bought nothing once the certificate was signed.
+     * evidence/0254 forged exactly what an earlier version honoured: verified:true with a plausible
+     * method and issuer, hand-written into a blob. So this returns an UNVERIFIED principal always,
+     * whatever the row claims. The grade is not data to be carried; it is produced by {@see admit()}
+     * when a channel re-verifies. A caller that wants the grade must re-admit through its proof, not
+     * read it back from storage.
      *
      * @param array<string, mixed> $row
      */
@@ -78,18 +95,14 @@ final readonly class VerifiedPrincipal
         if ($principal === '') {
             return null;
         }
-        $method = \is_string($row['method'] ?? null) ? $row['method'] : null;
-        $issuer = \is_string($row['issuer'] ?? null) ? $row['issuer'] : null;
-        $conPrueba = $method !== null && $issuer !== null;
 
         return new self(
             principal: $principal,
-            // The grade can only be as high as the proof present — asserting true is not enough.
-            verified: ($row['verified'] ?? false) === true && $conPrueba,
+            verified: false,
             channel: \is_string($row['channel'] ?? null) ? $row['channel'] : null,
             scopes: array_values(array_filter((array) ($row['scopes'] ?? []), \is_string(...))),
-            method: $method,
-            issuer: $issuer,
+            method: \is_string($row['method'] ?? null) ? $row['method'] : null,
+            issuer: \is_string($row['issuer'] ?? null) ? $row['issuer'] : null,
         );
     }
 
