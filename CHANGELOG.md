@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.14.0](https://github.com/getmilpa/command/compare/v0.13.0...v0.14.0) (2026-08-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* VerifiedPrincipal's constructor is private. Build an unverified principal with fromArray or fromTerminal, and a verified one only with admit(), which a channel calls after re-verifying its proof. fromArray no longer carries a verified grade regardless of the payload.
+
+### Bug Fixes
+
+* a verified grade is produced by admission, never read from data ([#27](https://github.com/getmilpa/command/issues/27)) ([b5f1e20](https://github.com/getmilpa/command/commit/b5f1e20390d7251cf6445272788eac899a6750ee))
+
 ## [0.13.0](https://github.com/getmilpa/command/compare/v0.12.0...v0.13.0) (2026-08-18)
 
 
