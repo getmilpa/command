@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0](https://github.com/getmilpa/command/compare/v0.11.0...v0.12.0) (2026-08-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* a descent that lowers authority is no longer satisfied by its certificate's covers. That axis requires a live judgment from an AuthorityPolicy over verified ContextFacts, carried on CallSubject (or passed through Operation::ceilingForCall). Callers offering neither get no authority descent.
+
+### Features
+
+* the policy judges authority, and the context only brings facts ([#23](https://github.com/getmilpa/command/issues/23)) ([1a373b4](https://github.com/getmilpa/command/commit/1a373b42019916a8806d3370875211bad3a2bcb6))
+
 ## [0.11.0](https://github.com/getmilpa/command/compare/v0.10.0...v0.11.0) (2026-08-18)
 
 
