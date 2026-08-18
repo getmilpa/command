@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.0](https://github.com/getmilpa/command/compare/v0.10.0...v0.11.0) (2026-08-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* `DescentCertificate` now requires `operation` and only lowers a ceiling when `signature` verifies against `verifierPublicKey`. `EffectProfile::forCall()` takes a `CallSubject` instead of a handler digest string; `Operation::ceilingForCall()` builds it. Requires ext-sodium.
+
+### Features
+
+* a descent certificate carries the proof of where it came from ([#21](https://github.com/getmilpa/command/issues/21)) ([6f26ef2](https://github.com/getmilpa/command/commit/6f26ef24691cffb4747364352c570832f06b1c5f))
+
 ## [0.10.0](https://github.com/getmilpa/command/compare/v0.9.1...v0.10.0) (2026-08-18)
 
 
