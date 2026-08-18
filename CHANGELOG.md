@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/getmilpa/command/compare/v0.12.0...v0.13.0) (2026-08-18)
+
+
+### Features
+
+* a channel delivers verified identity facts, and no layer may raise the grade ([#25](https://github.com/getmilpa/command/issues/25)) ([06df4f9](https://github.com/getmilpa/command/commit/06df4f9b88dd1dd58f0af2921bdc236541d1fcf8))
+
 ## [0.12.0](https://github.com/getmilpa/command/compare/v0.11.0...v0.12.0) (2026-08-18)
 
 
