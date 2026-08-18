@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.0](https://github.com/getmilpa/command/compare/v0.9.1...v0.10.0) (2026-08-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* a `Descent` without a valid `DescentCertificate` no longer lowers any ceiling. `EffectProfile::forCall()` takes the handler digest of the code about to run, and a caller that cannot supply it gets no descent. Prefer `Operation::ceilingForCall()`, which supplies it.
+
+### Features
+
+* a descent needs a certificate, not a sentence ([#19](https://github.com/getmilpa/command/issues/19)) ([7368ad4](https://github.com/getmilpa/command/commit/7368ad4d0298223f94173daa049e35376fbc7045))
+
 ## [0.8.0](https://github.com/getmilpa/command/compare/v0.7.0...v0.8.0) (2026-08-12)
 
 
