@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/getmilpa/command/compare/v0.14.0...v0.14.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* each axis is reduced only by its own producer, so authority needs no certificate ([#29](https://github.com/getmilpa/command/issues/29)) ([20fca67](https://github.com/getmilpa/command/commit/20fca678edec7d35395ebfe28a7d8384dccbccfa))
+
 ## [0.14.0](https://github.com/getmilpa/command/compare/v0.13.0...v0.14.0) (2026-08-18)
 
 
