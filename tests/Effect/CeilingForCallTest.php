@@ -34,6 +34,17 @@ use PHPUnit\Framework\TestCase;
  */
 final class CeilingForCallTest extends TestCase
 {
+    private string $publica = '';
+
+    private string $privada = '';
+
+    protected function setUp(): void
+    {
+        $par = sodium_crypto_sign_keypair();
+        $this->publica = base64_encode(sodium_crypto_sign_publickey($par));
+        $this->privada = sodium_crypto_sign_secretkey($par);
+    }
+
     /** 1 · a certificate earned watching THIS handler brings the ceiling down. */
     public function testACertificateBoundToThisHandlerLowersTheCeiling(): void
     {
@@ -116,6 +127,7 @@ final class CeilingForCallTest extends TestCase
     {
         $certificado = new DescentCertificate(
             verifier: 'verify-descent/2026-08-18',
+            operation: 'capabilities:enable',
             predicate: ['dry_run' => true],
             covers: ['mutation'],
             to: new EffectProfile(
@@ -166,13 +178,15 @@ final class CeilingForCallTest extends TestCase
                     whenValue: true,
                     to: $destino,
                     because: 'the handler prints the command it would run and returns before running it',
-                    certificate: new DescentCertificate(
+                    certificate: (new DescentCertificate(
                         verifier: 'verify-descent+observe-network/2026-08-18',
+                        operation: 'capabilities:enable',
                         predicate: ['dry_run' => true],
                         covers: ['mutation', 'externality', 'reversibility', 'authority', 'subject'],
                         to: $destino,
                         handlerSha256: $observado->handlerDigest(),
-                    ),
+                        verifierPublicKey: $this->publica,
+                    ))->signedWith($this->privada),
                 )],
             ),
         );
