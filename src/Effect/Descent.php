@@ -139,6 +139,45 @@ final readonly class Descent
      *
      * @return list<string>
      */
+    /**
+     * The provenance of every axis this descent brings down — the receipt of decisions/0057.
+     *
+     * Called only after {@see holds()} has said yes, so it does not re-gate; it re-derives the
+     * citations. Authority is re-judged live because its claim is a RECEIPT, not currency
+     * (decisions/0053) — so a channel that records this always records the policy that was in force
+     * at composition, never a stale one. Observed axes cite the certificate that covered them.
+     *
+     * @return list<AxisReduction>
+     */
+    public function explain(EffectProfile $original, ?CallSubject $subject): array
+    {
+        $reductions = [];
+        foreach ($this->loweredAxes($original) as $axis) {
+            if ($axis === 'authority') {
+                $claim = $subject?->policy?->judge($subject->facts ?? new ContextFacts(), $subject);
+                $provenance = $claim === null
+                    ? 'policy: no judgment'
+                    : $claim->policyId . '@' . $claim->policyDigest . ' over ' . $claim->factsFingerprint;
+                $producer = 'policy';
+            } else {
+                $provenance = $this->certificate === null
+                    ? 'observer: no certificate'
+                    : $this->certificate->verifier . ' covers [' . implode(',', $this->certificate->covers) . ']';
+                $producer = 'observer';
+            }
+            $reductions[] = new AxisReduction(
+                axis: $axis,
+                from: $original->{$axis}->value,
+                to: $this->to->{$axis}->value,
+                producer: $producer,
+                provenance: $provenance,
+            );
+        }
+
+        return $reductions;
+    }
+
+    /** @return list<string> */
     private function loweredAxes(EffectProfile $original): array
     {
         $bajan = [];
