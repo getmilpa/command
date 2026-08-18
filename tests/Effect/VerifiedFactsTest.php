@@ -29,19 +29,10 @@ use PHPUnit\Framework\TestCase;
  */
 final class VerifiedFactsTest extends TestCase
 {
-    /** 1 · a channel that proved identity by credential yields verified facts. */
-    public function testAProvenPrincipalYieldsVerifiedFacts(): void
+    /** 1 · a channel that re-verified a proof, live, yields verified facts. */
+    public function testAnAdmittedPrincipalYieldsVerifiedFacts(): void
     {
-        $principal = new VerifiedPrincipal(
-            principal: 'key:ABCD1234',
-            verified: true,
-            channel: 'cli-sign',
-            scopes: ['probes:run'],
-            method: 'gpg-detached',
-            issuer: 'local-keyring',
-        );
-
-        $facts = $principal->toFacts();
+        $facts = VerifiedPrincipal::admit('key:ABCD1234', 'cli-sign', ['probes:run'], 'gpg-detached', 'local-keyring')->toFacts();
 
         self::assertTrue($facts->verified);
         self::assertSame('key:ABCD1234', $facts->principal);
@@ -58,40 +49,46 @@ final class VerifiedFactsTest extends TestCase
     }
 
     /**
-     * 3 · F-3 · NO LATER LAYER RAISES THE GRADE.
+     * 3 · F-2 of evidence/0254, and the whole reason for this amendment: fromArray CANNOT mint a
+     * verified grade, no matter how plausible the strings.
      *
-     * Reconstructing from a payload that claims verified:true does not make it so unless the payload
-     * ALSO carries the proof (method + issuer). A bare «verified: true» is exactly the editable
-     * covers of evidence/0249, one field over.
+     * The measurement forged exactly this — verified:true with a plausible method and issuer — and
+     * the old code honoured it, so authority came down on a hand-written blob. A string is not a
+     * proof. fromArray reconstructs the ASSERTION; the grade is decided elsewhere, by re-verifying.
      */
-    public function testReconstructionCannotRaiseVerificationWithoutProof(): void
+    public function testFromArrayCannotMintAVerifiedGrade(): void
     {
-        $sinPrueba = VerifiedPrincipal::fromArray(['principal' => 'key:X', 'verified' => true, 'channel' => 'c']);
-
-        self::assertNotNull($sinPrueba);
-        self::assertFalse($sinPrueba->toFacts()->verified, 'verified:true sin método ni emisor no es verificación');
-    }
-
-    /** 4 · with the proof present, reconstruction preserves the grade — it carries, it does not invent. */
-    public function testReconstructionPreservesAProvenGrade(): void
-    {
-        $conPrueba = VerifiedPrincipal::fromArray([
+        $forjado = VerifiedPrincipal::fromArray([
             'principal' => 'key:X', 'verified' => true, 'channel' => 'cli-sign',
             'scopes' => ['probes:run'], 'method' => 'gpg-detached', 'issuer' => 'local-keyring',
         ]);
 
-        self::assertNotNull($conPrueba);
-        self::assertTrue($conPrueba->toFacts()->verified);
+        self::assertNotNull($forjado);
+        self::assertFalse($forjado->toFacts()->verified, 'un blob de datos nunca produce verified:true');
     }
 
-    /** 5 · a proof cannot be minted by asserting the fields: a channel builds it, a payload only echoes it. */
-    public function testFactsRoundTripThroughTheirOwnFingerprint(): void
+    /** 4 · the ONLY door to a verified grade is admit(): a channel that re-verified a proof, live. */
+    public function testOnlyAdmissionProducesAVerifiedGrade(): void
     {
-        $principal = new VerifiedPrincipal('key:X', true, 'cli-sign', ['probes:run'], 'gpg-detached', 'local-keyring');
-        $ida = $principal->toFacts();
-        $vuelta = VerifiedPrincipal::fromArray($principal->toArray())->toFacts();
+        $admitido = VerifiedPrincipal::admit(
+            principal: 'key:X',
+            channel: 'lab-idp',
+            scopes: ['probes:run'],
+            method: 'ed25519-detached',
+            issuer: 'lab-idp',
+        );
 
-        self::assertSame($ida->fingerprint(), $vuelta->fingerprint());
+        self::assertTrue($admitido->toFacts()->verified);
+        self::assertSame('ed25519-detached', $admitido->method);
+    }
+
+    /** 5 · a re-read of an admitted principal still cannot carry the grade across the data boundary. */
+    public function testTheGradeDoesNotSurviveSerialisation(): void
+    {
+        $admitido = VerifiedPrincipal::admit('key:X', 'lab-idp', ['probes:run'], 'ed25519-detached', 'lab-idp');
+
+        self::assertTrue($admitido->toFacts()->verified);
+        self::assertFalse(VerifiedPrincipal::fromArray($admitido->toArray())->toFacts()->verified, 'lo persistido es la aserción, no el grado');
     }
 
     /** 7 · a payload with no principal is not a principal — the boundary refuses to build one. */
