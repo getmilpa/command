@@ -91,15 +91,32 @@ final readonly class Descent
             return false;
         }
 
+        // AUTHORITY IS OUTSIDE THE OBSERVER'S JURISDICTION (greenhouse decisions/0054). A covers
+        // that says «authority» is ignored for that axis rather than honoured — requiring privilege
+        // is not a diff on disk, so no observation has the right to say it went away. The axis has
+        // its own producer, consulted LIVE below, so a policy change can never leave a stale claim
+        // in force.
+        $bajan = $this->loweredAxes($original);
+        $delCertificado = array_values(array_diff($bajan, ['authority']));
+
         if (
             $this->certificate === null
             || ! $this->certificate->signedByItsVerifier()
             || ! $this->certificate->speaksAbout($this, $subject)
             || ! $this->certificate->watched($subject?->handlerDigest)
             || $this->certificate->to != $this->to
-            || ! $this->certificate->coversAll($this->loweredAxes($original))
+            || ! $this->certificate->coversAll($delCertificado)
         ) {
             return false;
+        }
+
+        if (\in_array('authority', $bajan, true)) {
+            $juicio = $subject?->policy !== null && $subject->facts !== null
+                ? $subject->policy->judge($subject->facts, $subject)
+                : null;
+            if ($juicio === null || ! $juicio->justifies($this->to->authority)) {
+                return false;
+            }
         }
 
         return $this->to->mutation->weight() <= $original->mutation->weight()

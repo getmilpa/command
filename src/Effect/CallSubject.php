@@ -25,12 +25,16 @@ namespace Milpa\Command\Effect;
 final readonly class CallSubject
 {
     /**
-     * @param string      $operation     the operation about to run, by name
-     * @param string|null $handlerDigest the digest of the handler body about to run, or null when it cannot be read
+     * @param string               $operation     the operation about to run, by name
+     * @param string|null          $handlerDigest the digest of the handler body about to run, or null when it cannot be read
+     * @param AuthorityPolicy|null $policy        the institution with the right to judge authority for this call, when the caller has one (greenhouse decisions/0054)
+     * @param ContextFacts|null    $facts         the verified facts of who is calling — facts only, never a verdict
      */
     public function __construct(
         public string $operation,
         public ?string $handlerDigest = null,
+        public ?AuthorityPolicy $policy = null,
+        public ?ContextFacts $facts = null,
     ) {
     }
 }

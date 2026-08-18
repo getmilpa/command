@@ -134,11 +134,15 @@ readonly class Operation
      * the only honest place to join them: a caller computing the digest itself would either hand out
      * descents nobody watched or refuse ones that were earned.
      *
+     * The policy and the facts travel when the caller has them (greenhouse decisions/0054): the
+     * authority axis is judged live by its own producer, and a caller with nothing to offer simply
+     * gets no authority descent — fail-closed, not an error.
+     *
      * @param array<string, mixed> $arguments
      */
-    public function ceilingForCall(array $arguments): EffectProfile
+    public function ceilingForCall(array $arguments, ?Effect\AuthorityPolicy $policy = null, ?Effect\ContextFacts $facts = null): EffectProfile
     {
-        return $this->effectCeiling()->forCall($arguments, new Effect\CallSubject($this->name, $this->handlerDigest()));
+        return $this->effectCeiling()->forCall($arguments, new Effect\CallSubject($this->name, $this->handlerDigest(), $policy, $facts));
     }
 
     /**

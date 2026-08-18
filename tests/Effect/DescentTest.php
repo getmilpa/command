@@ -16,6 +16,8 @@ namespace Milpa\Command\Tests\Effect;
 
 use Milpa\Command\Effect\Authority;
 use Milpa\Command\Effect\CallSubject;
+use Milpa\Command\Effect\ContextFacts;
+use Milpa\Command\Effect\DeclaredAuthorityPolicy;
 use Milpa\Command\Effect\Descent;
 use Milpa\Command\Effect\DescentCertificate;
 use Milpa\Command\Effect\EffectProfile;
@@ -55,10 +57,21 @@ final class DescentTest extends TestCase
         $this->privada = sodium_crypto_sign_secretkey($par);
     }
 
-    /** What the call is about to run — the operation and the handler, which travel together. */
+    /**
+     * What the call is about to run — with the policy and facts that judge its authority descent
+     * (greenhouse decisions/0054): this battery's destination lowers authority, and that axis is
+     * outside the certificate's jurisdiction now.
+     */
     private function sujeto(string $operacion = self::OPERACION, ?string $digest = self::DIGEST): CallSubject
     {
-        return new CallSubject($operacion, $digest);
+        return new CallSubject(
+            $operacion,
+            $digest,
+            policy: new DeclaredAuthorityPolicy('bateria', [
+                self::OPERACION => ['scopes' => ['capabilities:write'], 'authority' => Authority::Read],
+            ]),
+            facts: new ContextFacts(principal: 'rod', verified: true, scopes: ['capabilities:write']),
+        );
     }
 
 

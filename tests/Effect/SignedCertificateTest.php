@@ -16,6 +16,8 @@ namespace Milpa\Command\Tests\Effect;
 
 use Milpa\Command\Effect\Authority;
 use Milpa\Command\Effect\CallSubject;
+use Milpa\Command\Effect\ContextFacts;
+use Milpa\Command\Effect\DeclaredAuthorityPolicy;
 use Milpa\Command\Effect\Descent;
 use Milpa\Command\Effect\DescentCertificate;
 use Milpa\Command\Effect\EffectProfile;
@@ -207,7 +209,17 @@ final class SignedCertificateTest extends TestCase
 
     private function sujeto(): CallSubject
     {
-        return new CallSubject('probe:enable', self::DIGEST);
+        // The destination lowers authority too, and that axis is judged by its own producer now
+        // (greenhouse decisions/0054) — the signature battery is about the certificate, so the
+        // policy here is simply sufficient and constant.
+        return new CallSubject(
+            'probe:enable',
+            self::DIGEST,
+            policy: new DeclaredAuthorityPolicy('bateria', [
+                'probe:enable' => ['scopes' => [], 'authority' => Authority::Read],
+            ]),
+            facts: new ContextFacts(principal: 'rod', verified: true),
+        );
     }
 
     /** @param list<string> $cubre */
