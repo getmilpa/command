@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/getmilpa/command/compare/v0.14.1...v0.15.0) (2026-08-18)
+
+
+### Features
+
+* composition carries the provenance of every reduction ([#31](https://github.com/getmilpa/command/issues/31)) ([1c3a86c](https://github.com/getmilpa/command/commit/1c3a86c36a9744bdf6107775a38c90b8e305d135))
+
 ## [0.14.1](https://github.com/getmilpa/command/compare/v0.14.0...v0.14.1) (2026-08-18)
 
 
