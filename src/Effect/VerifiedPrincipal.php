@@ -93,7 +93,12 @@ final readonly class VerifiedPrincipal
         );
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * The payload form, carrying the proof alongside the grade so {@see fromArray()} can refuse to
+     * honour a grade whose proof did not survive the round trip.
+     *
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [
