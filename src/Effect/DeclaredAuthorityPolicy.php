@@ -35,6 +35,13 @@ final readonly class DeclaredAuthorityPolicy implements AuthorityPolicy
     ) {
     }
 
+    /**
+     * Judge this call against the declared table, or refuse — and refusal is the default.
+     *
+     * The three refusals are deliberate and ordered: hearsay first (unverified facts judge
+     * nothing), then the missing rule (deny by default), then the missing scope. No judgment means
+     * no claim, and without a claim the authority axis does not come down.
+     */
     public function judge(ContextFacts $facts, CallSubject $subject): ?AuthorityClaim
     {
         // Hearsay judges nothing: the flag is a fact ABOUT the facts, and it gates everything.
@@ -62,6 +69,13 @@ final readonly class DeclaredAuthorityPolicy implements AuthorityPolicy
         );
     }
 
+    /**
+     * The exact version of the rules doing the judging.
+     *
+     * Scopes and operations are sorted before hashing so the digest names the RULES, not the order
+     * someone happened to type them in — editing a rule re-versions the policy, reordering it does
+     * not (the same canonicalisation lesson the signed certificate paid for in decisions/0051).
+     */
     public function digest(): string
     {
         $reglas = [];
