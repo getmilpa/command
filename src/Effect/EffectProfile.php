@@ -198,13 +198,28 @@ final class EffectProfile
      */
     public function forCall(array $arguments, ?CallSubject $subject = null): self
     {
+        return $this->composeForCall($arguments, $subject)->effective;
+    }
+
+    /**
+     * The effective ceiling AND the receipt of how it was reached (greenhouse decisions/0057).
+     *
+     * Where {@see forCall()} answers «what ceiling?», this answers «what ceiling, and who lowered
+     * each axis to get here?» — one AxisReduction per axis that came down, each naming its authorized
+     * producer. The composer is not a producer (MILPA-G002): it asks each descent to {@see
+     * Descent::explain()} what it lowered and records the answer; it never decides an axis itself.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    public function composeForCall(array $arguments, ?CallSubject $subject = null): ProfileComposition
+    {
         foreach ($this->descents as $descent) {
             if ($descent->triggeredBy($arguments) && $descent->holds($this, $subject)) {
-                return $descent->to;
+                return new ProfileComposition($descent->to, $descent->explain($this, $subject));
             }
         }
 
-        return $this;
+        return new ProfileComposition($this, []);
     }
 
     /**
