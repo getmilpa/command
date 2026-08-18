@@ -97,17 +97,25 @@ final readonly class Descent
         // its own producer, consulted LIVE below, so a policy change can never leave a stale claim
         // in force.
         $bajan = $this->loweredAxes($original);
-        $delCertificado = array_values(array_diff($bajan, ['authority']));
 
-        if (
-            $this->certificate === null
-            || ! $this->certificate->signedByItsVerifier()
-            || ! $this->certificate->speaksAbout($this, $subject)
-            || ! $this->certificate->watched($subject?->handlerDigest)
-            || $this->certificate->to != $this->to
-            || ! $this->certificate->coversAll($delCertificado)
-        ) {
-            return false;
+        // EACH AXIS IS REDUCED ONLY BY ITS OWN PRODUCER (greenhouse decisions/0053). The certificate
+        // produces the OBSERVED axes; authority has its own producer, the policy, below. So the
+        // certificate is consulted only for the axes it must cover, and a descent that lowers
+        // authority ALONE leaves it nothing to say — requiring one there gated an axis it has no
+        // jurisdiction over, which evidence/0255 measured on cattle: a judged authority descent with
+        // no certificate did not come down. An empty certificate is not the price of a policy.
+        $delCertificado = array_values(array_diff($bajan, ['authority']));
+        if ($delCertificado !== []) {
+            if (
+                $this->certificate === null
+                || ! $this->certificate->signedByItsVerifier()
+                || ! $this->certificate->speaksAbout($this, $subject)
+                || ! $this->certificate->watched($subject?->handlerDigest)
+                || $this->certificate->to != $this->to
+                || ! $this->certificate->coversAll($delCertificado)
+            ) {
+                return false;
+            }
         }
 
         if (\in_array('authority', $bajan, true)) {
