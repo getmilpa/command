@@ -179,6 +179,48 @@ final class EffectProfile
     }
 
     /**
+     * The greatest-lower-bound of two profiles — the mirror of {@see self::join()}.
+     *
+     * Where join composes UPWARD (the more dangerous of each axis, so a ceiling covers both), meet
+     * composes DOWNWARD (the safer), so the result can only LOWER and never raise any axis. It is the
+     * primitive a STRUCTURAL counter rests on: when a human tightens the envelope of a gated call —
+     * «authorise it, but only if reversible / only Read» — the tightened ceiling is
+     * `meet($ceiling, $humanProfile)`, and it is safe precisely because a meet is `<=` both operands
+     * on every axis. That «never raises» is the whole safety claim.
+     */
+    public function meet(self $other): self
+    {
+        $mutation = $this->mutation->weight() <= $other->mutation->weight() ? $this->mutation : $other->mutation;
+
+        $subject = $this->subject->weight() <= $other->subject->weight() ? $this->subject : $other->subject;
+        // A no-mutation profile has no subject (constructor invariant). meet can drop mutation to None
+        // while keeping the mutating side's subject; Subject::None is `<=` every subject, so clamping
+        // it stays a valid greatest-lower-bound.
+        if ($mutation === Mutation::None) {
+            $subject = Subject::None;
+        }
+
+        $reversibility = $this->reversibility->weight() <= $other->reversibility->weight() ? $this->reversibility : $other->reversibility;
+        // Guaranteed reversibility requires a rollback contract. meet reaches Guaranteed when EITHER
+        // side is, so it carries the contract from whichever side declared it — otherwise the result
+        // would be an invalid profile.
+        $rollbackContract = null;
+        if ($reversibility === Reversibility::Guaranteed) {
+            $rollbackContract = $this->reversibility === Reversibility::Guaranteed ? $this->rollbackContract : $other->rollbackContract;
+        }
+
+        return new self(
+            $mutation,
+            $this->externality->weight() <= $other->externality->weight() ? $this->externality : $other->externality,
+            $reversibility,
+            $this->authority->weight() <= $other->authority->weight() ? $this->authority : $other->authority,
+            array_values(array_unique([...$this->escalatesOn, ...$other->escalatesOn])),
+            $subject,
+            $rollbackContract,
+        );
+    }
+
+    /**
      * The ceiling THIS CALL carries, once its arguments are known.
      *
      * Escalation is not resolved here and must not be: `unresolvedEscalators()` answers a different
