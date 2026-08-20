@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/getmilpa/command/compare/v0.16.0...v0.17.0) (2026-08-20)
+
+
+### Features
+
+* isNoWiderThan(), fromPartial() and fromArray() — the envelope helpers beside meet() ([351f4ee](https://github.com/getmilpa/command/commit/351f4ee991b9936adaa36710fdce0efa8a011510))
+* isNoWiderThan(), fromPartial() and fromArray() — the envelope helpers beside meet() ([f2a2527](https://github.com/getmilpa/command/commit/f2a25278b1aee1a04e16360bae64018707935a52))
+
 ## [0.16.0](https://github.com/getmilpa/command/compare/v0.15.0...v0.16.0) (2026-08-20)
 
 
