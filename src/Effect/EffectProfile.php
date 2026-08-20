@@ -221,6 +221,124 @@ final class EffectProfile
     }
 
     /**
+     * Whether this profile is `<=` `$other` on EVERY axis — the one comparator.
+     *
+     * It is what a gate asserts right after a meet (the never-widens tripwire: `meet($b, $p)` must be
+     * no wider than `$b`, and if it ever is not, nothing is granted) and what a policy uses to admit a
+     * call under a tightened envelope (the call's composed profile must be no wider than the envelope).
+     * One ordering, in one place: a second comparator elsewhere is the duplicate-judge defect, because
+     * the day the two disagree, whichever one a consumer happens to read decides authority.
+     *
+     * `Unknown` weighs as the top of its axis, so an unclassified axis is never «narrower» than a
+     * classified one — not knowing is not permission.
+     */
+    public function isNoWiderThan(self $other): bool
+    {
+        return $this->mutation->weight() <= $other->mutation->weight()
+            && $this->externality->weight() <= $other->externality->weight()
+            && $this->reversibility->weight() <= $other->reversibility->weight()
+            && $this->authority->weight() <= $other->authority->weight()
+            && $this->subject->weight() <= $other->subject->weight();
+    }
+
+    /**
+     * A human's tightening as a profile: the axes they named, `Unknown` on the ones they did not.
+     *
+     * `Unknown` is the TOP of every axis, so meeting this with a declared ceiling leaves the omitted
+     * axes exactly at the ceiling — naming one axis tightens one axis. The keys are the five axes and
+     * nothing else: an `amount`, a `path`, any value, is a change of TARGET, and that is not a
+     * tightening but a new proposal (greenhouse decisions/0065) — it is refused here so it can only
+     * travel the advisory route. `Guaranteed` is refused too: it buys less scrutiny and needs a
+     * producer's rollback contract, which nobody can supply by clicking.
+     *
+     * @param array<string, mixed> $axes e.g. `['reversibility' => 'compensatable', 'authority' => 'read']`
+     */
+    public static function fromPartial(array $axes): self
+    {
+        if ($axes === []) {
+            throw new \InvalidArgumentException('a tightening names at least one axis; an empty one tightens nothing');
+        }
+
+        $known = ['mutation', 'externality', 'reversibility', 'authority', 'subject'];
+        foreach (array_keys($axes) as $key) {
+            if (!\in_array($key, $known, true)) {
+                throw new \InvalidArgumentException(sprintf(
+                    '«%s» is not an effect axis (%s): changing it is a new proposal, not a tightening — use a counter',
+                    (string) $key,
+                    implode(', ', $known),
+                ));
+            }
+        }
+
+        $level = static function (string $axis, string $enum, array $axes): mixed {
+            if (!\array_key_exists($axis, $axes)) {
+                return $enum::Unknown;
+            }
+            $raw = $axes[$axis];
+            $case = \is_string($raw) ? $enum::tryFrom($raw) : null;
+            if ($case === null) {
+                throw new \InvalidArgumentException(sprintf('%s is not a level of %s', json_encode($raw) ?: get_debug_type($raw), $axis));
+            }
+
+            return $case;
+        };
+
+        $reversibility = $level('reversibility', Reversibility::class, $axes);
+        if ($reversibility === Reversibility::Guaranteed) {
+            throw new \InvalidArgumentException(
+                'reversibility «guaranteed» cannot be claimed by a tightening: it buys less scrutiny and '
+                . 'needs a producer-backed rollback contract, which a human cannot supply',
+            );
+        }
+
+        return new self(
+            $level('mutation', Mutation::class, $axes),
+            $level('externality', Externality::class, $axes),
+            $reversibility,
+            $level('authority', Authority::class, $axes),
+            subject: $level('subject', Subject::class, $axes),
+        );
+    }
+
+    /**
+     * The inverse of {@see self::toArray()}: a profile back from the array an event stored.
+     *
+     * A granted envelope lives in an event payload; the policy rehydrates it here to compare with
+     * {@see self::isNoWiderThan()}. All five axes are required — a partial array is a tightening
+     * ({@see self::fromPartial()}), not a stored profile, and reading one as the other would turn
+     * «axis not recorded» into «axis at its top» silently.
+     *
+     * @param array<string, mixed> $data as produced by toArray()
+     */
+    public static function fromArray(array $data): self
+    {
+        $axis = static function (string $key, string $enum, array $data): mixed {
+            $raw = $data[$key] ?? null;
+            $case = \is_string($raw) ? $enum::tryFrom($raw) : null;
+            if ($case === null) {
+                throw new \InvalidArgumentException(sprintf('a stored profile needs a valid «%s»; got %s', $key, json_encode($raw) ?: get_debug_type($raw)));
+            }
+
+            return $case;
+        };
+
+        $escalatesOn = \is_array($data['escalates_on'] ?? null)
+            ? array_values(array_filter($data['escalates_on'], 'is_string'))
+            : [];
+        $rollback = \is_string($data['rollback_contract'] ?? null) ? $data['rollback_contract'] : null;
+
+        return new self(
+            $axis('mutation', Mutation::class, $data),
+            $axis('externality', Externality::class, $data),
+            $axis('reversibility', Reversibility::class, $data),
+            $axis('authority', Authority::class, $data),
+            $escalatesOn,
+            $axis('subject', Subject::class, $data),
+            $rollback,
+        );
+    }
+
+    /**
      * The ceiling THIS CALL carries, once its arguments are known.
      *
      * Escalation is not resolved here and must not be: `unresolvedEscalators()` answers a different
