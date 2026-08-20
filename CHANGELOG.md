@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0](https://github.com/getmilpa/command/compare/v0.15.0...v0.16.0) (2026-08-20)
+
+
+### Features
+
+* EffectProfile::meet() — the greatest-lower-bound, mirror of join() ([230ce41](https://github.com/getmilpa/command/commit/230ce41256638b74d7c55c9e6c8dada3afc4cf09))
+* EffectProfile::meet() — the greatest-lower-bound, mirror of join() ([f79637a](https://github.com/getmilpa/command/commit/f79637a46530a3944a693256c87e1aa679b91409))
+
 ## [0.15.0](https://github.com/getmilpa/command/compare/v0.14.1...v0.15.0) (2026-08-18)
 
 
