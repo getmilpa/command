@@ -35,6 +35,12 @@ final readonly class CallSubject
         public ?string $handlerDigest = null,
         public ?AuthorityPolicy $policy = null,
         public ?ContextFacts $facts = null,
+        /**
+         * The call is confined to a disposable trial workspace — the live producer that lets
+         * composition lower `mutation` to Ephemeral, and nothing else (greenhouse decisions/0068).
+         * Set only by the router that also sends the call there: one source for both.
+         */
+        public ?TrialConfinement $confinement = null,
     ) {
     }
 }

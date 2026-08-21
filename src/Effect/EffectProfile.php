@@ -373,13 +373,39 @@ final class EffectProfile
      */
     public function composeForCall(array $arguments, ?CallSubject $subject = null): ProfileComposition
     {
+        $base = new ProfileComposition($this, []);
         foreach ($this->descents as $descent) {
             if ($descent->triggeredBy($arguments) && $descent->holds($this, $subject)) {
-                return new ProfileComposition($descent->to, $descent->explain($this, $subject));
+                $base = new ProfileComposition($descent->to, $descent->explain($this, $subject));
+                break;
             }
         }
 
-        return new ProfileComposition($this, []);
+        // THE THIRD PRODUCER: CONFINEMENT (greenhouse decisions/0068, 0069). A call routed to a
+        // disposable trial workspace composes its mutation as EPHEMERAL — what it writes dies with the
+        // workspace — and NOTHING else: a copy isolates files, not the world, so externality,
+        // authority, reversibility and subject stay exactly where the declared descents (or the
+        // ceiling) left them. It composes ON TOP of a held descent and, like every producer, only
+        // lowers: an operation already at Ephemeral or None gets no reduction, so no receipt.
+        $confinement = $subject?->confinement;
+        if ($confinement !== null && $base->effective->mutation->weight() > Mutation::Ephemeral->weight()) {
+            $from = $base->effective;
+            $to = new self(
+                Mutation::Ephemeral,
+                $from->externality,
+                $from->reversibility,
+                $from->authority,
+                $from->escalatesOn,
+                $from->subject,
+                $from->rollbackContract,
+            );
+            $reductions = $base->reductions;
+            $reductions[] = new AxisReduction('mutation', $from->mutation->value, Mutation::Ephemeral->value, 'trial-workspace', $confinement->provenance());
+
+            return new ProfileComposition($to, $reductions);
+        }
+
+        return $base;
     }
 
     /**
