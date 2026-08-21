@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.0](https://github.com/getmilpa/command/compare/v0.17.0...v0.18.0) (2026-08-21)
+
+
+### Features
+
+* TrialConfinement — a call confined to a disposable workspace composes mutation as Ephemeral ([8f0ff81](https://github.com/getmilpa/command/commit/8f0ff8124f00f078842aa2a254d9601d29dff408))
+* TrialConfinement — a call confined to a disposable workspace composes mutation as Ephemeral ([753988e](https://github.com/getmilpa/command/commit/753988e76780fac854377759f7c960a0a34f6249))
+
 ## [0.17.0](https://github.com/getmilpa/command/compare/v0.16.0...v0.17.0) (2026-08-20)
 
 
