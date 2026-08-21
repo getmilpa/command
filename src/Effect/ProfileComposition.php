@@ -32,4 +32,21 @@ final readonly class ProfileComposition
         public array $reductions,
     ) {
     }
+
+    /**
+     * Whether a trial workspace produced this composition's mutation — the ONE fact the policy reads
+     * to know «this call is confined» (greenhouse decisions/0069). Read from the reductions, never
+     * from the effective profile alone: an operation that merely writes temp files is also Ephemeral,
+     * and it is not confined to anything.
+     */
+    public function confinedByTrial(): bool
+    {
+        foreach ($this->reductions as $r) {
+            if ($r->axis === 'mutation' && $r->producer === 'trial-workspace') {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
