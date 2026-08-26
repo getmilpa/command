@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/getmilpa/command/compare/v0.18.0...v0.19.0) (2026-08-26)
+
+
+### Features
+
+* **effect:** the owner of a call's payload may attest its subject — a fourth producer in composition ([#39](https://github.com/getmilpa/command/issues/39)) ([d813abb](https://github.com/getmilpa/command/commit/d813abb55ce8c8721de28927187b1d010ba9671c))
+
 ## [0.18.0](https://github.com/getmilpa/command/compare/v0.17.0...v0.18.0) (2026-08-21)
 
 
