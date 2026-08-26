@@ -401,8 +401,32 @@ final class EffectProfile
             );
             $reductions = $base->reductions;
             $reductions[] = new AxisReduction('mutation', $from->mutation->value, Mutation::Ephemeral->value, 'trial-workspace', $confinement->provenance());
+            $base = new ProfileComposition($to, $reductions);
+        }
 
-            return new ProfileComposition($to, $reductions);
+        // THE FOURTH PRODUCER: THE PAYLOAD'S OWNER ATTESTS THE SUBJECT (greenhouse decisions/0080). An
+        // operation that carries its change as data — a promotion carries a diff — can only DECLARE the
+        // worst case; the producer that owns that payload may attest what this call's change is really
+        // made of, and composition lowers `subject` to it — ONE axis, with the producer and what it
+        // checked on the receipt — and nothing else. Like every producer it only lowers: an attestation
+        // at or above the effective subject is not a reduction and leaves no receipt; a read (no
+        // mutation, subject None) has nothing to lower. It composes ON TOP of a held descent and of
+        // confinement, so both receipts survive.
+        $attestation = $subject?->subjectAttestation;
+        if ($attestation !== null && $attestation->subject->weight() < $base->effective->subject->weight()) {
+            $from = $base->effective;
+            $to = new self(
+                $from->mutation,
+                $from->externality,
+                $from->reversibility,
+                $from->authority,
+                $from->escalatesOn,
+                $attestation->subject,
+                $from->rollbackContract,
+            );
+            $reductions = $base->reductions;
+            $reductions[] = new AxisReduction('subject', $from->subject->value, $attestation->subject->value, $attestation->producer, $attestation->provenance);
+            $base = new ProfileComposition($to, $reductions);
         }
 
         return $base;
