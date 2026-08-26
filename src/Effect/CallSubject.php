@@ -41,6 +41,12 @@ final readonly class CallSubject
          * Set only by the router that also sends the call there: one source for both.
          */
         public ?TrialConfinement $confinement = null,
+        /**
+         * What THIS call's change is made of, attested by the producer that owns its payload — the
+         * live producer that lets composition lower `subject`, and nothing else (greenhouse
+         * decisions/0080). Set only by the owner of the payload it classified: one source for both.
+         */
+        public ?SubjectAttestation $subjectAttestation = null,
     ) {
     }
 }
