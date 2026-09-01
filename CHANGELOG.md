@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/getmilpa/command/compare/v0.19.0...v0.20.0) (2026-09-01)
+
+
+### Features
+
+* **contract:** an operation declares its own contract — conditions, artifacts, evidence ([#41](https://github.com/getmilpa/command/issues/41)) ([fe136b4](https://github.com/getmilpa/command/commit/fe136b4bee62eeb9865e5ef0dd0bd296f725c128))
+
 ## [0.19.0](https://github.com/getmilpa/command/compare/v0.18.0...v0.19.0) (2026-08-26)
 
 
