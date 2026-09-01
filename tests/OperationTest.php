@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Milpa\Command\Tests;
 
+use Milpa\Command\DeclaredCondition;
 use Milpa\Command\Operation;
 use PHPUnit\Framework\TestCase;
 
@@ -80,5 +81,41 @@ final class OperationTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         new Operation('bad', 'd', static fn (): array => [], scopes: ['crm.contact:update'], permission: 'crm.contact:update');
+    }
+
+    /**
+     * The contract fields are ADDITIVE: an operation that declares nothing keeps exactly the shape
+     * it always had — empty lists, no evidence — so no existing consumer changes behaviour.
+     */
+    public function testAnOperationThatDeclaresNoContractCarriesEmptyDeclarations(): void
+    {
+        $op = new Operation('ping', 'Ping', static fn (): string => 'pong');
+
+        self::assertSame([], $op->preconditions);
+        self::assertSame([], $op->postconditions);
+        self::assertSame([], $op->artifacts);
+        self::assertNull($op->observableEvidence);
+    }
+
+    /** The declared contract travels on the operation, readable by any surface. */
+    public function testAnOperationCarriesItsDeclaredContract(): void
+    {
+        $pre = new DeclaredCondition('phpunit-installed', 'vendor/bin/phpunit exists under the app root');
+        $post = new DeclaredCondition('entity_file', 'the entity class file exists on disk');
+
+        $op = new Operation(
+            name: 'make',
+            description: 'Scaffold an artifact',
+            handler: static fn (array $i): array => $i,
+            preconditions: [$pre],
+            postconditions: [$post],
+            artifacts: ['the scaffolded files by kind', 'the postcondition report'],
+            observableEvidence: 'the postcondition report in the result',
+        );
+
+        self::assertSame([$pre], $op->preconditions);
+        self::assertSame([$post], $op->postconditions);
+        self::assertSame(['the scaffolded files by kind', 'the postcondition report'], $op->artifacts);
+        self::assertSame('the postcondition report in the result', $op->observableEvidence);
     }
 }
