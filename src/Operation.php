@@ -89,6 +89,42 @@ readonly class Operation
          * whichever consumer happens to read first.
          */
         public ?EffectProfile $effects = null,
+        /**
+         * What must hold BEFORE this operation can run — each one a condition the handler actually
+         * enforces with a refusal that names it.
+         *
+         * The declaration is additive metadata; the ENFORCEMENT stays where it always was, in the
+         * handler. The contract this list creates is for the declaring package's tests: for every
+         * condition here, a test violates it and asserts the handler refuses naming it. Declaring
+         * what is not enforced must be red, or this list is prose wearing a type.
+         *
+         * @var list<DeclaredCondition>
+         */
+        public array $preconditions = [],
+        /**
+         * What must hold AFTER a successful run — each one a condition a verifier proves.
+         *
+         * Same discipline as {@see self::$preconditions}, aimed the other way: the names here must
+         * come from the SAME source the postcondition verifier emits from, so the declaration and
+         * the report cannot drift apart — one authority, cited twice.
+         *
+         * @var list<DeclaredCondition>
+         */
+        public array $postconditions = [],
+        /**
+         * What this operation PRODUCES when it succeeds, as plain names a caller can look for —
+         * files by kind, a report, a signed document. Empty means it produces nothing it wants
+         * found afterwards.
+         *
+         * @var list<string>
+         */
+        public array $artifacts = [],
+        /**
+         * What PROVES this operation ran — e.g. «the postcondition report in the result; the
+         * session's recorded facts» — or `null` when the operation names no evidence. It answers
+         * «did it?» with something observable, so the answer is read, never invented.
+         */
+        public ?string $observableEvidence = null,
     ) {
         // A SECOND SOURCE OF TRUTH IS REFUSED AT DECLARATION, not reconciled at read time.
         //
