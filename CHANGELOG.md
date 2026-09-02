@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/getmilpa/command/compare/v0.21.0...v0.22.0) (2026-09-02)
+
+
+### Features
+
+* Operation::createsNamedTarget — creating a target is not selecting one ([#45](https://github.com/getmilpa/command/issues/45)) ([1a9ca09](https://github.com/getmilpa/command/commit/1a9ca095256d16ee18c79f56e9061227bb21629f))
+
 ## [0.21.0](https://github.com/getmilpa/command/compare/v0.20.0...v0.21.0) (2026-09-02)
 
 
