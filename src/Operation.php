@@ -125,6 +125,23 @@ readonly class Operation
          * «did it?» with something observable, so the answer is read, never invented.
          */
         public ?string $observableEvidence = null,
+        /**
+         * Whether {@see $namedTarget} names an entity this operation CREATES, rather than one it
+         * selects among what already exists (greenhouse decisions/0187, D-04/D-05).
+         *
+         * The two are not the same question, and only one is a human's. WHICH class realises the plan
+         * — `implement TareaService` materialising the component the objective implies — is the
+         * MODEL's interpretive domain: product→human, interpretation→model. WHICH existing plugin to
+         * disable, or note to delete, is target SELECTION and stays a decision the human's ask must
+         * name. So an operation that MATERIALISES its named target opts out of the «you did not name
+         * it» intent question for a non-grave call; one that SELECTS an existing target does not.
+         *
+         * Defaults to `false` — fail-closed: an operation says «I create this» explicitly, or the gate
+         * keeps asking. A grave (privileged/destructive/egress) op still names its target regardless
+         * ({@see \Milpa\AppRuntime\Agent\IntentAdmissibility} NEVER tier), so this only ever relaxes
+         * the reversible, WriteAsUser, model-domain case.
+         */
+        public bool $createsNamedTarget = false,
     ) {
         // A SECOND SOURCE OF TRUTH IS REFUSED AT DECLARATION, not reconciled at read time.
         //
