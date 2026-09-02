@@ -124,6 +124,37 @@ final readonly class VerifiedPrincipal
         ];
     }
 
+    /**
+     * The grade dies at the serialization boundary too, not only at {@see fromArray()}.
+     *
+     * `fromArray()` is the door the app actually uses, and it strips the grade. But native
+     * `unserialize()` bypasses the constructor and CAN write readonly props, so a grant graph that
+     * some future layer serialized into a `$_SESSION`, a cache or a queue would resurrect
+     * `verified:true` and walk straight past {@see admit()} — the exact forgery evidence/0254 tumbó,
+     * arriving through a door nobody watched. These two hooks close it by type, not by discipline: the
+     * payload carries the assertion, and rehydration re-produces an UNVERIFIED principal always. A
+     * caller that wants the grade re-admits through its proof, here as everywhere.
+     *
+     * @return array<string, mixed>
+     */
+    public function __serialize(): array
+    {
+        return $this->toArray();
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->principal = \is_string($data['principal'] ?? null) ? $data['principal'] : '';
+        $this->verified = false;  // never resurrected from data — produced only by admit()
+        $this->channel = \is_string($data['channel'] ?? null) ? $data['channel'] : null;
+        $this->scopes = array_values(array_filter((array) ($data['scopes'] ?? []), \is_string(...)));
+        $this->method = \is_string($data['method'] ?? null) ? $data['method'] : null;
+        $this->issuer = \is_string($data['issuer'] ?? null) ? $data['issuer'] : null;
+    }
+
     /** The facts the authority policy consumes — carrying exactly what was proved, no more. */
     public function toFacts(): ContextFacts
     {
