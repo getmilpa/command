@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/getmilpa/command/compare/v0.20.0...v0.21.0) (2026-09-02)
+
+
+### Features
+
+* compose verified-human intent into the consent demand (IntentGrant) ([#43](https://github.com/getmilpa/command/issues/43)) ([ea49ab9](https://github.com/getmilpa/command/commit/ea49ab90afd3e75a4be14f3363025d3120bbc3ca))
+
 ## [0.20.0](https://github.com/getmilpa/command/compare/v0.19.0...v0.20.0) (2026-09-01)
 
 
