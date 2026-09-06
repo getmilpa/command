@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/getmilpa/command/compare/v0.22.0...v0.23.0) (2026-09-06)
+
+
+### Features
+
+* declare an operation's intent with attributes and derive its mechanics ([#47](https://github.com/getmilpa/command/issues/47)) ([5a1a380](https://github.com/getmilpa/command/commit/5a1a380689e4122e0e499cc366271228ba7708ec))
+
 ## [0.22.0](https://github.com/getmilpa/command/compare/v0.21.0...v0.22.0) (2026-09-02)
 
 
