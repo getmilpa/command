@@ -22,16 +22,28 @@ use Milpa\Command\Effect\Mutation;
 use Milpa\Command\Effect\Reversibility;
 use Milpa\Command\Effect\Subject;
 use Milpa\Command\Operation;
+use Milpa\Command\Declaration\Because;
+use Milpa\Command\Declaration\Confirms;
+use Milpa\Command\Declaration\Mutates;
+use Milpa\Command\Declaration\Needs;
+use Milpa\Command\Declaration\Operation as OperationAttribute;
+use Milpa\Command\Declaration\Reads;
+use Milpa\Command\Declaration\Target;
+use Milpa\Command\Tests\Declaration\Fixtures\Bares;
 use Milpa\Command\Tests\Declaration\Fixtures\Contradictory;
 use Milpa\Command\Tests\Declaration\Fixtures\Greet;
 use Milpa\Command\Tests\Declaration\Fixtures\Greetings;
 use Milpa\Command\Tests\Declaration\Fixtures\Handless;
+use Milpa\Command\Tests\Declaration\Fixtures\Measure;
+use Milpa\Command\Tests\Declaration\Fixtures\Priority;
 use Milpa\Command\Tests\Declaration\Fixtures\Publish;
 use Milpa\Command\Tests\Declaration\Fixtures\ScalarRun;
 use Milpa\Command\Tests\Declaration\Fixtures\Silent;
 use Milpa\Command\Tests\Declaration\Fixtures\Status;
 use Milpa\Command\Tests\Declaration\Fixtures\TwoTargets;
 use Milpa\Command\Tests\Declaration\Fixtures\Untypeable;
+use Milpa\Command\Tests\Declaration\Fixtures\Untyped;
+use Milpa\Command\Tests\Declaration\Fixtures\Wraps;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -44,6 +56,14 @@ use PHPUnit\Framework\TestCase;
  * greenhouse decisions/0212 («nothing downstream changes») is false.
  */
 #[CoversClass(DeclaredOperation::class)]
+#[CoversClass(OperationAttribute::class)]
+#[CoversClass(Mutates::class)]
+#[CoversClass(Reads::class)]
+#[CoversClass(Needs::class)]
+#[CoversClass(Because::class)]
+#[CoversClass(Confirms::class)]
+#[CoversClass(Target::class)]
+#[CoversClass(DeclarationException::class)]
 final class DeclaredOperationTest extends TestCase
 {
     public function testDerivesTheSameOperationTheHandWrittenFormBuilt(): void
@@ -257,5 +277,112 @@ final class DeclaredOperationTest extends TestCase
 
         self::assertSame(1000, $resolutions);
         self::assertCount(1000, $greetings->written);
+    }
+
+    public function testEveryCoercibleTypeIsDerivedAndAPureEnumOffersItsCaseNames(): void
+    {
+        $operation = DeclaredOperation::from(Measure::class);
+
+        self::assertSame(
+            [
+                'type' => 'object',
+                'required' => ['ratio', 'dry', 'tags'],
+                'properties' => [
+                    'ratio' => ['type' => 'number'],
+                    'dry' => ['type' => 'boolean'],
+                    'tags' => ['type' => 'array'],
+                    'priority' => ['type' => 'string', 'enum' => ['Low', 'High'], 'default' => Priority::Low],
+                ],
+            ],
+            $operation->inputSchema,
+        );
+
+        self::assertSame(
+            [
+                'type' => 'object',
+                'properties' => [
+                    'ratio' => ['type' => 'number'],
+                    'dry' => ['type' => 'boolean'],
+                    'tags' => ['type' => 'array'],
+                    'priority' => ['type' => 'string'],
+                ],
+            ],
+            $operation->outputSchema,
+        );
+    }
+
+    public function testThePurposeJoinsTheDescriptionSoBothReadersSeeOneSentence(): void
+    {
+        $operation = DeclaredOperation::from(Measure::class);
+
+        self::assertSame('Measure a thing. so the catalogue explains WHY, not just what.', $operation->description);
+        self::assertSame('2', $operation->version);
+        self::assertSame('/measure', $operation->path);
+        self::assertSame(['cli'], $operation->surfaces);
+        self::assertFalse($operation->mutating);
+    }
+
+    public function testAPureEnumCaseArrivesByNameAndAnythingElseIsRefused(): void
+    {
+        $operation = DeclaredOperation::from(Measure::class);
+
+        self::assertSame(
+            ['ratio' => 0.5, 'dry' => true, 'tags' => ['a'], 'priority' => 'High'],
+            ($operation->handler)(['ratio' => 0.5, 'dry' => true, 'tags' => ['a'], 'priority' => 'High']),
+        );
+
+        $this->expectException(DeclarationException::class);
+        ($operation->handler)(['ratio' => 0.5, 'dry' => true, 'tags' => [], 'priority' => 'Urgent']);
+    }
+
+    public function testAMissingRequiredInputIsRefusedByTheHandler(): void
+    {
+        $operation = DeclaredOperation::from(Measure::class);
+
+        $this->expectException(DeclarationException::class);
+        $this->expectExceptionMessageMatches("/missing required input 'ratio'/");
+
+        ($operation->handler)([]);
+    }
+
+    public function testAUnionTypedInputIsRefused(): void
+    {
+        $this->expectException(DeclarationException::class);
+        $this->expectExceptionMessageMatches('/\$id has no single type/');
+
+        DeclaredOperation::from(Untyped::class);
+    }
+
+    public function testAClassThatDoesNotExistIsRefused(): void
+    {
+        $this->expectException(DeclarationException::class);
+        $this->expectExceptionMessageMatches('/the class does not exist/');
+
+        DeclaredOperation::from('Milpa\Command\Tests\Declaration\Fixtures\Nope');
+    }
+
+    public function testAResultWithNothingPromotedDeclaresNoOutputSchema(): void
+    {
+        self::assertNull(DeclaredOperation::from(Bares::class)->outputSchema);
+        self::assertNull(DeclaredOperation::from(Wraps::class)->outputSchema);
+    }
+
+    public function testAnObjectResultIsReturnedAsItsPublicValues(): void
+    {
+        $operation = DeclaredOperation::from(Bares::class);
+
+        self::assertSame(['note' => 'nothing promoted here'], ($operation->handler)([]));
+    }
+
+    /**
+     * A declared read is the canonical read — not a second opinion about what read-only means.
+     *
+     * The first version of #[Reads] built its own profile and claimed guaranteed reversibility with
+     * nothing to back it. EffectProfile refused it at construction, which is the package's own
+     * doctrine working: a claim that lowers scrutiny must name what backs it.
+     */
+    public function testADeclaredReadIsExactlyTheCanonicalReadOnlyProfile(): void
+    {
+        self::assertEquals(EffectProfile::readOnly(), DeclaredOperation::from(Bares::class)->effects);
     }
 }
