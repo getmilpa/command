@@ -79,6 +79,57 @@ projector registers it as a tool, an HTTP projector synthesizes the `POST /posts
 projector decides, per operation, whether and how to project it (`supports()` / `supportsSurface()`);
 `milpa/command` never runs any of them — that dispatch is the host's job.
 
+## Declare the intent; the framework derives the rest
+
+The example above says everything twice: `string $title` in the handler AND `['type' => 'string']` in
+the schema; a sentence for the human in a docblock AND a `description` for the agent. Only one half of
+that is intent — what it mutates, whose authority it spends, which argument the human must NAME. The
+other half is mechanics a PHP type already answers.
+
+So declare the first and derive the second:
+
+```php
+use Milpa\Command\Declaration\{Because, Confirms, Mutates, Needs, Operation, Target};
+use Milpa\Command\Effect\{Externality, Mutation, Reversibility, Subject};
+
+#[Operation(name: 'posts:publish', description: 'Publish a post.')]
+#[Mutates(Mutation::Persistent, Externality::None, Reversibility::Guaranteed, subject: Subject::Data)]
+#[Needs(scopes: ['posts:write'])]
+#[Confirms]
+final readonly class PublishPost
+{
+    public function __construct(
+        #[Target] #[Because('which post to publish')] public string $id,
+        public Visibility $visibility = Visibility::Public,
+    ) {
+    }
+
+    public function run(Posts $posts): Receipt
+    {
+        return $posts->publish($this->id, $this->visibility);
+    }
+}
+```
+
+The constructor IS the input contract — types become the schema, a parameter without a default is
+required, a PHP enum brings its own admissible values, `#[Because]` becomes the field's description.
+`run()` is the handler, with its collaborators injected and its return type declaring the output.
+
+```php
+use Milpa\Command\Declaration\DeclaredOperation;
+
+$operation = DeclaredOperation::from(PublishPost::class, fn (string $type) => $container->get($type));
+```
+
+What comes back is the **same `Operation` value object** the hand-written form builds, so every
+projector, the consent flow and the agent's catalogue read exactly what they read before. Both styles
+live side by side; the attribute wins where it exists.
+
+**Nothing about authority is ever inferred.** A class that declares neither `#[Mutates]` nor
+`#[Reads]` is refused by name — silence would ship as «does not mutate» and every consumer would
+believe it. So are two `#[Target]`s, an input type no schema describes, and a `run()` whose
+collaborators nobody can resolve. Each refusal happens once, at declaration, and says what to declare.
+
 ## Two contracts, one atom
 
 | Contract | Role |
