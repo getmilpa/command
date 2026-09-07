@@ -74,9 +74,15 @@ enum Reversibility: string
             self::Compensatable => 1,
             self::ManualRecovery => 2,
             self::Irreversible => 3,
-            // Level with irreversible, NOT below it. «We do not know if this can be undone» has to be
-            // treated as «it cannot», or the unknown becomes the cheap way to look reversible.
-            self::Unknown => 3,
+            // ABOVE irreversible, not level with it. «We do not know if this can be undone» has to be
+            // treated as at least «it cannot», or the unknown becomes the cheap way to look
+            // reversible — and it cannot weigh the SAME either: `join()` breaks a tie in favour of
+            // its left side, so with equal weights `irreversible.join(unknown)` answered
+            // `irreversible` and `unknown.join(irreversible)` answered `unknown`. A fold whose
+            // label depends on the order it was folded in is not a ceiling (greenhouse
+            // decisions/0224). Strictly above, every axis is a chain and the join is the same
+            // whichever side is folded first.
+            self::Unknown => 4,
         };
     }
 }

@@ -50,18 +50,23 @@ final class EffectProfileTest extends TestCase
     }
 
     /**
-     * UNKNOWN OUTRANKS PERSISTENT, AND SITS LEVEL WITH IRREVERSIBLE.
+     * UNKNOWN OUTRANKS PERSISTENT, AND OUTRANKS IRREVERSIBLE TOO — on every axis, strictly.
      *
      * «I do not know what this writes» is a worse position than «I know it writes to disk», because
-     * the second can be reasoned about. And an unknown reversibility must be treated as irreversible,
-     * or «we never checked» becomes the cheap way to look recoverable.
+     * the second can be reasoned about. And an unknown reversibility must be treated as at least
+     * irreversible, or «we never checked» becomes the cheap way to look recoverable.
+     *
+     * This test used to FREEZE reversibility as a tie (`assertSame`), and the tie was a defect that
+     * only execution showed: `join()` breaks a tie towards its left side, so the label of a fold
+     * depended on which profile was folded first (greenhouse decisions/0224). Strictly above is the
+     * only weight that keeps «not below» AND keeps the join commutative.
      */
     public function testNotKnowingIsRankedAboveKnowingSomethingBad(): void
     {
         self::assertGreaterThan(Mutation::Persistent->weight(), Mutation::Unknown->weight());
         self::assertGreaterThan(Externality::Public->weight(), Externality::Unknown->weight());
         self::assertGreaterThan(Authority::Privileged->weight(), Authority::Unknown->weight());
-        self::assertSame(Reversibility::Irreversible->weight(), Reversibility::Unknown->weight());
+        self::assertGreaterThan(Reversibility::Irreversible->weight(), Reversibility::Unknown->weight());
     }
 
     /**
