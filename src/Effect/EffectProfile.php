@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace Milpa\Command\Effect;
 
+use Milpa\Command\Consent\OperationId;
+
 /**
  * What an operation can do at WORST — the upper bound, declared by the operation itself.
  *
@@ -134,6 +136,58 @@ final class EffectProfile
                 . 'must name what backs it, or it is the operation certifying itself'
             );
         }
+
+        // A PROMISE THAT LOWERS SCRUTINY NAMES THE INVERSE; IT DOES NOT DESCRIBE IT.
+        //
+        // The guard above asked for a contract and accepted a sentence, so the house asked for proof
+        // and took a note: «delete var/capability-index.json» reads like an answer and is not one —
+        // nothing can run it, nothing can check it ran, and no gate can put it through the ceremony
+        // the original call went through. What CAN be all three is the name of another operation, in
+        // the identity this family already has for exactly this ({@see OperationId}: spelling belongs
+        // to the projection, identity to the atom).
+        //
+        // Well-formed is checked here because it needs nothing but the string. Whether that name
+        // resolves to an operation this app actually offers is a question about the TABLE, not about
+        // one profile, and it is asked where the table exists.
+        if ($reversibility === Reversibility::Guaranteed && !self::namesAnOperation((string) $rollbackContract)) {
+            throw new \InvalidArgumentException(\sprintf(
+                'the rollback contract «%s» describes an inverse instead of naming one: reversibility '
+                . '«guaranteed» must name the operation that undoes this (e.g. «plugins.disable»), '
+                . 'because prose cannot be run, cannot be checked, and cannot be put through a gate. '
+                . 'An operation whose inverse is not an operation is not guaranteed — declare what it '
+                . 'really is.',
+                $rollbackContract,
+            ));
+        }
+    }
+
+    /**
+     * Whether a rollback contract NAMES an operation instead of describing one.
+     *
+     * The shape of an identity, not of a sentence: canonical segments of letters and digits (a hyphen
+     * inside a segment is allowed — `plugins.disable-unsafe` is one operation). Anything carrying a
+     * space, a slash or a path is prose, and prose is what this rule exists to refuse.
+     */
+    private static function namesAnOperation(string $contract): bool
+    {
+        return preg_match('/^[a-z0-9]+(?:[-][a-z0-9]+)*(?:\.[a-z0-9]+(?:[-][a-z0-9]+)*)*$/', OperationId::canonizar($contract)) === 1;
+    }
+
+    /**
+     * The operation that undoes this one — the identity, not the spelling — or null when this profile
+     * promises no inverse.
+     *
+     * Callers ask for the identity so a gate can find that operation however a surface writes it, and
+     * so what the ledger records is a NAME with arguments rather than a class: a class in a stored
+     * record is a dangling pointer the day it is renamed.
+     */
+    public function rollbackOperation(): ?OperationId
+    {
+        if ($this->reversibility !== Reversibility::Guaranteed || $this->rollbackContract === null) {
+            return null;
+        }
+
+        return new OperationId($this->rollbackContract);
     }
 
     /**
@@ -400,6 +454,16 @@ final class EffectProfile
         if ($mutation === Mutation::None && $reversibility === Reversibility::Guaranteed) {
             $reversibility = Reversibility::NotApplicable;
             $rollback = null;
+        }
+
+        // And a stored promise backed by PROSE is read as what it actually was: something a human can
+        // undo by hand. It is not rejected — the event happened and cannot be re-declared — and the
+        // sentence is KEPT, so nothing anyone wrote is lost. What is not kept is the discount:
+        // reporting `guaranteed` to a policy reading this envelope today would hand out lower scrutiny
+        // on the strength of a note. This RAISES scrutiny and never lowers it, which is the same rule
+        // that puts `Unknown` level with `Irreversible` instead of below it.
+        if ($reversibility === Reversibility::Guaranteed && !self::namesAnOperation((string) $rollback)) {
+            $reversibility = Reversibility::ManualRecovery;
         }
 
         return new self(

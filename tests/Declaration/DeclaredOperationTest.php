@@ -86,7 +86,7 @@ final class DeclaredOperationTest extends TestCase
                 Externality::None,
                 Reversibility::Guaranteed,
                 subject: Subject::Data,
-                rollbackContract: 'remove the line from var/greetings.txt',
+                rollbackContract: 'hola.forget',
             ),
         );
 

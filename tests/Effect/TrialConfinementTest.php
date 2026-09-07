@@ -112,7 +112,7 @@ final class TrialConfinementTest extends TestCase
     /** Confinement cannot RAISE: an operation already at Ephemeral or None stays where it is, with no reduction. */
     public function testConfinementNeverRaisesMutation(): void
     {
-        $ephemeral = new EffectProfile(Mutation::Ephemeral, Externality::None, Reversibility::Guaranteed, Authority::Read, subject: Subject::Data, rollbackContract: 'dies with the process');
+        $ephemeral = new EffectProfile(Mutation::Ephemeral, Externality::None, Reversibility::ManualRecovery, Authority::Read, subject: Subject::Data);
         $read = EffectProfile::readOnly();
 
         $c1 = $ephemeral->composeForCall([], new CallSubject('tmp', confinement: $this->confinamiento()));

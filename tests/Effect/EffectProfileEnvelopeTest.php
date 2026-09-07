@@ -159,7 +159,7 @@ final class EffectProfileEnvelopeTest extends TestCase
             Authority::WriteAsUser,
             escalatesOn: ['path'],
             subject: Subject::Data,
-            rollbackContract: 'delete the row',
+            rollbackContract: 'rows.delete',
         );
 
         foreach ([$this->ceiling(), $guaranteed, EffectProfile::unclassified(), EffectProfile::readOnly()] as $p) {
