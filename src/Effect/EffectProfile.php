@@ -183,7 +183,18 @@ final class EffectProfile
      */
     public function rollbackOperation(): ?OperationId
     {
-        if ($this->reversibility !== Reversibility::Guaranteed || $this->rollbackContract === null) {
+        // NAMING AND PROMISING ARE DIFFERENT THINGS, and this used to conflate them.
+        //
+        // It answered only for `Guaranteed`, so an operation demoted to `Compensatable` while still
+        // naming a real inverse stopped being able to say what undoes it — and demotion is exactly what
+        // greenhouse decisions/0221 prescribes for a guarantee that depends on the host. The rungs differ
+        // in how much SCRUTINY they buy, not in whether they can name an operation: a compensating action
+        // is just as runnable, and just as worth finding, as a guaranteed one.
+        //
+        // What still decides is the CONTRACT: an identity when it names an operation, null when it is
+        // prose. `capabilities:refresh` («delete var/capability-index.json») and any hand-recovery note
+        // answer null, which is what they are.
+        if ($this->rollbackContract === null || !self::namesAnOperation($this->rollbackContract)) {
             return null;
         }
 

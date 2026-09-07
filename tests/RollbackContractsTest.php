@@ -109,6 +109,33 @@ final class RollbackContractsTest extends TestCase
         self::assertSame([], RollbackContracts::findings([]));
     }
 
+    /**
+     * AN OPERATION IS NOT ITS OWN INVERSE — the shape this check was blind to.
+     *
+     * `$offered` is filled in the same walk that collects the promises, so an operation naming ITSELF
+     * resolved against itself and could never produce a finding, in any host. Measured on
+     * `screen:set-state`, whose declared rollback contract is `screen:set-state`.
+     *
+     * Calling the same operation again with an earlier value MAY undo it — but that is a claim about
+     * ARGUMENTS, which a list of operations cannot see and therefore cannot check, and a promise nothing
+     * can check is what this class exists to refuse.
+     */
+    public function testAnOperationThatNamesItselfIsAFinding(): void
+    {
+        $table = [self::promising('screen.set-state', 'screen:set-state')];
+
+        self::assertCount(1, RollbackContracts::findings($table));
+        self::assertStringContainsString('names ITSELF as its inverse', RollbackContracts::findings($table)[0]);
+        self::assertStringContainsString('claim about ARGUMENTS', RollbackContracts::findings($table)[0]);
+    }
+
+    /** And it is caught by IDENTITY, not by string equality — the spelling is the surface's. */
+    public function testSelfNamingIsCaughtWhateverTheSpelling(): void
+    {
+        self::assertCount(1, RollbackContracts::findings([self::promising('screen:set-state', 'screen_set_state')]));
+        self::assertCount(1, RollbackContracts::findings([self::promising('screen.set-state', 'screen.set-state')]));
+    }
+
     private static function promising(string $name, string $inverse): Operation
     {
         return new Operation(
