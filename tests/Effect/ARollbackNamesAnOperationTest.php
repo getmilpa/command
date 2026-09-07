@@ -120,7 +120,7 @@ final class ARollbackNamesAnOperationTest extends TestCase
             Authority::WriteAsUser,
             subject: Subject::Data,
             rollbackContract: 'somebody edits the file back',
-        ))->rollbackOperation(), 'a contract on a non-guaranteed profile is a note, not a promise');
+        ))->rollbackOperation(), 'a hand-recovery note names no operation, so there is nothing to hand back');
     }
 
     /**
@@ -167,6 +167,29 @@ final class ARollbackNamesAnOperationTest extends TestCase
 
         self::assertSame(Reversibility::Guaranteed, $archived->reversibility);
         self::assertTrue($archived->rollbackOperation()?->is('plugins:disable'));
+    }
+
+    /**
+     * A COMPENSATING action can name an operation too, and it must be findable.
+     *
+     * `rollbackOperation()` answered only for `Guaranteed`, so an operation demoted to `Compensatable`
+     * while still naming a real inverse lost the ability to say what undoes it — and demotion is exactly
+     * what greenhouse decisions/0221 prescribes for a guarantee that depends on the host. The rungs
+     * differ in how much scrutiny they BUY, not in whether they can name an operation.
+     */
+    public function testACompensatingContractThatNamesAnOperationIsHandedBack(): void
+    {
+        $compensatable = new EffectProfile(
+            Mutation::Persistent,
+            Externality::None,
+            Reversibility::Compensatable,
+            Authority::WriteAsUser,
+            subject: Subject::Executable,
+            rollbackContract: 'plugins.disable',
+        );
+
+        self::assertTrue($compensatable->rollbackOperation()?->is('plugins:disable'));
+        self::assertSame(1, $compensatable->reversibility->weight(), 'and it still buys no discount');
     }
 
     private static function guaranteedBy(string $contract): EffectProfile
