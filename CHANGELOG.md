@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.25.0](https://github.com/getmilpa/command/compare/v0.24.0...v0.25.0) (2026-09-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* `Reversibility::Guaranteed` now requires its rollback contract to NAME an operation. Prose is refused at construction; migrate to the inverse's name (often already inside the sentence — «forget the screen with screen:forget»), or declare what the operation really is. An inverse that is not an operation is not a guarantee. Archived profiles are unaffected: they read as ManualRecovery.
+
+### Features
+
+* a rollback contract NAMES the inverse operation; prose is refused ([#53](https://github.com/getmilpa/command/issues/53)) ([458797e](https://github.com/getmilpa/command/commit/458797ea9fd015788a53ea0db2621e478371fc79))
+
 ## [0.24.0](https://github.com/getmilpa/command/compare/v0.23.0...v0.24.0) (2026-09-07)
 
 
