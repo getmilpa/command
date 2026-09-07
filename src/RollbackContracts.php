@@ -73,7 +73,24 @@ final readonly class RollbackContracts
         // Resolved against the WHOLE table, not as it is walked: an operation may name an inverse that
         // a later provider contributes, and a house that reported that as broken would be reporting the
         // order of its own iteration.
-        return array_filter($promises, static fn (string $inverse): bool => !isset($offered[$inverse]));
+        //
+        // AN OPERATION IS NOT ITS OWN INVERSE, and it was answering as one.
+        //
+        // `$offered` is filled in the same walk that collects the promises, so an operation naming ITSELF
+        // resolved against itself and could never produce a finding — in any host, wired or not. Measured
+        // on `screen:set-state`, whose rollback contract is `screen:set-state`: the one shape this check
+        // was blind to was the one shape that needs it most.
+        //
+        // Calling the same operation again with an earlier value MAY undo it, and that is a claim about
+        // arguments — which this list cannot see and therefore cannot verify. A promise nothing can check
+        // is the thing this class exists to refuse, so self-naming is reported like any inverse the table
+        // does not answer for, with its own sentence saying why.
+        return array_filter(
+            $promises,
+            static fn (string $inverse, string $operation): bool => $inverse === (new OperationId($operation))->canonical
+                || !isset($offered[$inverse]),
+            \ARRAY_FILTER_USE_BOTH,
+        );
     }
 
     /**
@@ -87,13 +104,20 @@ final readonly class RollbackContracts
     {
         $lines = [];
         foreach (self::unresolved($operations) as $operation => $inverse) {
-            $lines[] = \sprintf(
-                '%s promises «guaranteed» and names «%s» as its inverse, which this app does not offer: '
-                . 'a promise nobody can run is not a guarantee. Declare the inverse, or declare what this '
-                . 'operation really is.',
-                $operation,
-                $inverse,
-            );
+            $lines[] = $inverse === (new OperationId($operation))->canonical
+                ? \sprintf(
+                    '%s promises «guaranteed» and names ITSELF as its inverse: calling it again with an '
+                    . 'earlier value may undo it, but that is a claim about ARGUMENTS, which nothing here '
+                    . 'can check. Name the operation that undoes this, or declare what this one really is.',
+                    $operation,
+                )
+                : \sprintf(
+                    '%s promises «guaranteed» and names «%s» as its inverse, which this app does not offer: '
+                    . 'a promise nobody can run is not a guarantee. Declare the inverse, or declare what this '
+                    . 'operation really is.',
+                    $operation,
+                    $inverse,
+                );
         }
 
         return $lines;
