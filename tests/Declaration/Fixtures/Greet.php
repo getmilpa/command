@@ -33,7 +33,7 @@ use Milpa\Command\Effect\Subject;
     Externality::None,
     Reversibility::Guaranteed,
     subject: Subject::Data,
-    rollback: 'remove the line from var/greetings.txt',
+    rollback: 'hola.forget',
 )]
 final readonly class Greet
 {

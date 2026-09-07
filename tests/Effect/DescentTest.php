@@ -185,7 +185,7 @@ final class DescentTest extends TestCase
             reversibility: Reversibility::Guaranteed,
             authority: Authority::Read,
             subject: Subject::None,
-            rollbackContract: 'a different destination than the one this descent declares',
+            rollbackContract: 'probe.undo',
         )));
 
         self::assertSame(Subject::Executable, $techo->forCall(['dry_run' => true], $this->sujeto())->subject);
