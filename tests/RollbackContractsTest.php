@@ -42,7 +42,6 @@ final class RollbackContractsTest extends TestCase
             self::promising('plugins.disable', 'plugins.enable'),
         ];
 
-        self::assertSame([], RollbackContracts::unresolved($table));
         self::assertSame([], RollbackContracts::findings($table));
     }
 
@@ -54,7 +53,9 @@ final class RollbackContractsTest extends TestCase
     {
         $table = [self::promising('capabilities.refresh', 'nothing-to-roll-back')];
 
-        self::assertSame(['capabilities.refresh' => 'nothing-to-roll-back'], RollbackContracts::unresolved($table));
+        self::assertCount(1, RollbackContracts::findings($table));
+        self::assertStringContainsString('capabilities.refresh', RollbackContracts::findings($table)[0]);
+        self::assertStringContainsString('nothing-to-roll-back', RollbackContracts::findings($table)[0]);
         self::assertStringContainsString('does not offer', RollbackContracts::findings($table)[0]);
         self::assertStringContainsString('is not a guarantee', RollbackContracts::findings($table)[0]);
     }
@@ -62,7 +63,7 @@ final class RollbackContractsTest extends TestCase
     /** Identity, never spelling: a promise written for one surface resolves against another's. */
     public function testTheSpellingOfTheSurfaceDoesNotDecideWhetherAPromiseResolves(): void
     {
-        self::assertSame([], RollbackContracts::unresolved([
+        self::assertSame([], RollbackContracts::findings([
             self::promising('plugins:enable', 'plugins_disable'),
             self::promising('plugins.disable', 'plugins.enable'),
         ]), 'colon, underscore and dot are three ways to write one act');
@@ -74,7 +75,7 @@ final class RollbackContractsTest extends TestCase
      */
     public function testAnInverseContributedLaterStillResolves(): void
     {
-        self::assertSame([], RollbackContracts::unresolved([
+        self::assertSame([], RollbackContracts::findings([
             self::promising('plugins.enable', 'plugins.disable'),
             self::reading('plugins.disable'),
         ]));
@@ -99,13 +100,13 @@ final class RollbackContractsTest extends TestCase
             mutating: true,
         );
 
-        self::assertSame([], RollbackContracts::unresolved([$manual]), 'it promised nothing, so it broke nothing');
+        self::assertSame([], RollbackContracts::findings([$manual]), 'it promised nothing, so it broke nothing');
     }
 
     /** An app with no operations promises nothing, and answering otherwise would be inventing a debt. */
     public function testAnEmptyTableHasNoBrokenPromises(): void
     {
-        self::assertSame([], RollbackContracts::unresolved([]));
+        self::assertSame([], RollbackContracts::findings([]));
     }
 
     private static function promising(string $name, string $inverse): Operation
