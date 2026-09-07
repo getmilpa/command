@@ -147,10 +147,9 @@ final class CeilingForCallTest extends TestCase
             to: new EffectProfile(
                 mutation: Mutation::None,
                 externality: Externality::None,
-                reversibility: Reversibility::Guaranteed,
+                reversibility: Reversibility::NotApplicable,
                 authority: Authority::Read,
                 subject: Subject::None,
-                rollbackContract: 'nothing ran',
             ),
         );
 
@@ -163,10 +162,9 @@ final class CeilingForCallTest extends TestCase
         $destino = new EffectProfile(
             mutation: Mutation::None,
             externality: Externality::None,
-            reversibility: Reversibility::Guaranteed,
+            reversibility: Reversibility::NotApplicable,
             authority: Authority::Read,
             subject: Subject::None,
-            rollbackContract: 'nothing ran, so there is nothing to undo',
         );
 
         // The certificate is earned watching `$vigilado` — the same handler by default, another one

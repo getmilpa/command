@@ -104,6 +104,30 @@ final class EffectProfile
             );
         }
 
+        // NOTHING TO UNDO IS NOT A PROMISE TO UNDO — the same treatment as the subject above, aimed at
+        // the other claim that lowers scrutiny.
+        //
+        // `Guaranteed` was carrying two incompatible meanings and the cheap one was drowning the
+        // expensive one: measured on a founded app, twenty of twenty-three `Guaranteed` operations
+        // changed NOTHING and backed the claim with the prose «nothing-to-roll-back». An audit of who
+        // promises reversibility was 87% noise, and the one real debt hid inside it.
+        if ($mutation === Mutation::None && $reversibility === Reversibility::Guaranteed) {
+            throw new \InvalidArgumentException(
+                'an operation that changes nothing cannot promise to undo it: `Mutation::None` and '
+                . '«guaranteed» disagree about whether there is anything to take back — '
+                . '`Reversibility::NotApplicable` is what a read declares'
+            );
+        }
+
+        // And its mirror, so the new case cannot become a second way to look reversible: «nothing to
+        // undo» is only true when nothing happened.
+        if ($mutation !== Mutation::None && $reversibility === Reversibility::NotApplicable) {
+            throw new \InvalidArgumentException(
+                'an operation that changes something cannot say undoing does not apply: `Mutation::'
+                . $mutation->value . '` and «not_applicable» disagree about whether anything happens'
+            );
+        }
+
         if ($reversibility === Reversibility::Guaranteed && ($rollbackContract === null || trim($rollbackContract) === '')) {
             throw new \InvalidArgumentException(
                 'reversibility «guaranteed» requires a rollback contract: a claim that lowers scrutiny '
@@ -131,10 +155,9 @@ final class EffectProfile
         return new self(
             Mutation::None,
             Externality::None,
-            Reversibility::Guaranteed,
+            Reversibility::NotApplicable,
             Authority::Read,
             subject: Subject::None,
-            rollbackContract: 'nothing-to-roll-back',
         );
     }
 
@@ -162,18 +185,29 @@ final class EffectProfile
      */
     public function join(self $other): self
     {
+        $mutation = $this->mutation->weight() >= $other->mutation->weight() ? $this->mutation : $other->mutation;
+        $reversibility = $this->reversibility->weight() >= $other->reversibility->weight() ? $this->reversibility : $other->reversibility;
+        // «Undoing does not apply» is what a side that changes NOTHING says, so it has no opinion about
+        // undoing what the other side changed. It weighs the same as `Guaranteed` (both are the floor),
+        // so an axis-by-axis pick can land on it by a tie and produce a profile that mutates while
+        // saying undoing does not apply — which the constructor refuses, rightly. The side that
+        // actually mutates is the one whose answer means anything.
+        if ($mutation !== Mutation::None && $reversibility === Reversibility::NotApplicable) {
+            $reversibility = $this->mutation === Mutation::None ? $other->reversibility : $this->reversibility;
+        }
+
         return new self(
-            $this->mutation->weight() >= $other->mutation->weight() ? $this->mutation : $other->mutation,
+            $mutation,
             $this->externality->weight() >= $other->externality->weight() ? $this->externality : $other->externality,
-            $this->reversibility->weight() >= $other->reversibility->weight() ? $this->reversibility : $other->reversibility,
+            $reversibility,
             $this->authority->weight() >= $other->authority->weight() ? $this->authority : $other->authority,
             array_values(array_unique([...$this->escalatesOn, ...$other->escalatesOn])),
             $this->subject->weight() >= $other->subject->weight() ? $this->subject : $other->subject,
-            // The joined profile keeps a rollback contract ONLY while both sides still guarantee it.
-            // Joining a guaranteed operation with an irreversible one does not produce something
-            // half-recoverable; it produces something irreversible, and the contract no longer applies.
-            $this->reversibility === Reversibility::Guaranteed && $other->reversibility === Reversibility::Guaranteed
-                ? $this->rollbackContract
+            // The joined profile keeps a rollback contract ONLY while it still guarantees one. Joining a
+            // guaranteed operation with an irreversible one does not produce something half-recoverable;
+            // it produces something irreversible, and the contract no longer applies.
+            $reversibility === Reversibility::Guaranteed
+                ? ($this->reversibility === Reversibility::Guaranteed ? $this->rollbackContract : $other->rollbackContract)
                 : null,
         );
     }
@@ -201,6 +235,15 @@ final class EffectProfile
         }
 
         $reversibility = $this->reversibility->weight() <= $other->reversibility->weight() ? $this->reversibility : $other->reversibility;
+        // The twin of the subject clamp above, and true for the same reason: a profile that changes
+        // nothing does not promise to undo it (constructor invariant). meet can drop mutation to None
+        // while keeping the mutating side's reversibility; `NotApplicable` weighs the same as
+        // `Guaranteed` — both are the floor — so clamping it lowers no axis and stays a valid
+        // greatest-lower-bound.
+        if ($mutation === Mutation::None) {
+            $reversibility = Reversibility::NotApplicable;
+        }
+
         // Guaranteed reversibility requires a rollback contract. meet reaches Guaranteed when EITHER
         // side is, so it carries the contract from whichever side declared it — otherwise the result
         // would be an invalid profile.
@@ -291,6 +334,18 @@ final class EffectProfile
             );
         }
 
+        // And neither can its twin, or the new case becomes the back door to the same floor.
+        // `NotApplicable` weighs exactly what `Guaranteed` weighs, and it is a claim about the WORLD —
+        // that nothing happened — which is the producer's to make, never the tightener's. A human who
+        // believes an operation changes nothing tightens `mutation: none` and lets the profile derive it.
+        if ($reversibility === Reversibility::NotApplicable) {
+            throw new \InvalidArgumentException(
+                'reversibility «not_applicable» cannot be claimed by a tightening: it sits at the same '
+                . 'floor as «guaranteed» and asserts that nothing happens, which only the operation can '
+                . 'say — tighten «mutation» instead',
+            );
+        }
+
         return new self(
             $level('mutation', Mutation::class, $axes),
             $level('externality', Externality::class, $axes),
@@ -327,10 +382,30 @@ final class EffectProfile
             : [];
         $rollback = \is_string($data['rollback_contract'] ?? null) ? $data['rollback_contract'] : null;
 
+        $mutation = $axis('mutation', Mutation::class, $data);
+        $reversibility = $axis('reversibility', Reversibility::class, $data);
+
+        // ── HISTORY IS ATTESTED, NEVER VALIDATED ───────────────────────────────────────────────────
+        //
+        // Every profile stored before `Reversibility::NotApplicable` existed says `guaranteed` for an
+        // operation that changes nothing — that pair was how a read was written, and the constructor
+        // now refuses it. Throwing here would make a rule adopted TODAY unable to read what the ledger
+        // recorded YESTERDAY: an archived event is not a declaration anyone can still fix, and a house
+        // that cannot read its own ledger has lost the argument it was keeping the ledger to win.
+        //
+        // So a stored pair is normalised, not rejected. It lowers nothing — `NotApplicable` weighs what
+        // `guaranteed` weighed — and it says of that old event exactly what it always meant: nothing
+        // happened, so there was nothing to take back. The refusal keeps its whole force where it
+        // belongs, at the moment somebody DECLARES a profile.
+        if ($mutation === Mutation::None && $reversibility === Reversibility::Guaranteed) {
+            $reversibility = Reversibility::NotApplicable;
+            $rollback = null;
+        }
+
         return new self(
-            $axis('mutation', Mutation::class, $data),
+            $mutation,
             $axis('externality', Externality::class, $data),
-            $axis('reversibility', Reversibility::class, $data),
+            $reversibility,
             $axis('authority', Authority::class, $data),
             $escalatesOn,
             $axis('subject', Subject::class, $data),

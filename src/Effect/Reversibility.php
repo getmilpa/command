@@ -32,6 +32,26 @@ enum Reversibility: string
     /** A tested inverse operation exists and the authority to run it is available. */
     case Guaranteed = 'guaranteed';
 
+    /**
+     * Nothing happened, so there is nothing to take back — the answer for an operation that reads.
+     *
+     * It exists because `Guaranteed` was carrying two incompatible meanings, and the cheaper one was
+     * drowning the expensive one. Measured on a founded app: of twenty-three operations claiming
+     * `Guaranteed`, TWENTY changed nothing at all and backed the claim with the prose
+     * «nothing-to-roll-back». Three actually mutated, and only those three were making a promise.
+     * An audit of «who claims reversibility» was therefore 87% noise, and the one real debt —
+     * `capabilities:refresh`, whose rollback is prose, not an operation — hid inside it.
+     *
+     * A read is not reversible. Reversibility is a promise about how to undo an effect, and where
+     * there is no effect there is no promise to keep. Saying `Guaranteed` there is not a small
+     * imprecision: it is the only claim in this enum that BUYS lower scrutiny, handed out for free
+     * to everything that reads.
+     *
+     * It weighs the same as `Guaranteed` — the floor — because a read must never demand more
+     * scrutiny than an operation with a tested inverse.
+     */
+    case NotApplicable = 'not_applicable';
+
     /** Cannot be undone; a compensating action exists that limits the damage. */
     case Compensatable = 'compensatable';
 
@@ -47,6 +67,9 @@ enum Reversibility: string
     public function weight(): int
     {
         return match ($this) {
+            // The floor, and shared on purpose: an operation that changes nothing cannot be more
+            // suspicious than one that changes something it can provably undo.
+            self::NotApplicable => 0,
             self::Guaranteed => 0,
             self::Compensatable => 1,
             self::ManualRecovery => 2,

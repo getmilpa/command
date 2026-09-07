@@ -65,7 +65,7 @@ final class EffectProfileMeetTest extends TestCase
             new EffectProfile(Mutation::Persistent, Externality::ThirdParty, Reversibility::Irreversible, Authority::Privileged, subject: Subject::Configuration),
             new EffectProfile(Mutation::Ephemeral, Externality::None, Reversibility::Guaranteed, Authority::Read, subject: Subject::Data, rollbackContract: 'undo'),
             new EffectProfile(Mutation::Unknown, Externality::Public, Reversibility::Unknown, Authority::Unknown, subject: Subject::Unknown),
-            new EffectProfile(Mutation::None, Externality::None, Reversibility::Guaranteed, Authority::None, subject: Subject::None, rollbackContract: 'nothing-to-roll-back'),
+            new EffectProfile(Mutation::None, Externality::None, Reversibility::NotApplicable, Authority::None, subject: Subject::None, rollbackContract: 'nothing-to-roll-back'),
         ];
 
         foreach ($profiles as $a) {
@@ -103,7 +103,7 @@ final class EffectProfileMeetTest extends TestCase
      */
     public function testANoMutationMeetHasNoSubject(): void
     {
-        $readonly = new EffectProfile(Mutation::None, Externality::None, Reversibility::Guaranteed, Authority::Read, subject: Subject::Unknown, rollbackContract: 'nothing-to-roll-back');
+        $readonly = new EffectProfile(Mutation::None, Externality::None, Reversibility::NotApplicable, Authority::Read, subject: Subject::Unknown, rollbackContract: 'nothing-to-roll-back');
         $writes = new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::ManualRecovery, Authority::WriteAsUser, subject: Subject::Data);
 
         $m = $readonly->meet($writes);

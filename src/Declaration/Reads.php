@@ -51,17 +51,27 @@ final readonly class Reads
     ) {
     }
 
-    /** Nothing changes, so nothing rolls back — and the contract says so instead of staying silent. */
+    /**
+     * Nothing changes, so undoing DOES NOT APPLY — and the contract says so instead of staying silent.
+     *
+     * It used to say `Guaranteed` backed by the prose «nothing-to-roll-back», which is a different
+     * claim: `Guaranteed` promises a tested inverse and buys lower scrutiny with it. A read has no
+     * effect to take back, so it has no promise to make — {@see Reversibility::NotApplicable} says
+     * that, and `EffectProfile` now refuses the pair that said both.
+     *
+     * `EffectProfileTest` ties this to {@see EffectProfile::readOnly()}: the two must agree, because
+     * two answers to «what is a read made of» is exactly the second source of truth this attribute
+     * exists to remove.
+     */
     public function profile(): EffectProfile
     {
         return new EffectProfile(
             Mutation::None,
             $this->externality,
-            Reversibility::Guaranteed,
+            Reversibility::NotApplicable,
             $this->authority,
             $this->escalatesOn,
             Subject::None,
-            'nothing-to-roll-back',
         );
     }
 }

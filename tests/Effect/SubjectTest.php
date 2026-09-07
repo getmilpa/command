@@ -98,10 +98,9 @@ final class SubjectTest extends TestCase
         new EffectProfile(
             Mutation::None,
             Externality::None,
-            Reversibility::Guaranteed,
+            Reversibility::NotApplicable,
             Authority::Read,
             subject: Subject::Executable,
-            rollbackContract: 'nothing-to-roll-back',
         );
     }
 
