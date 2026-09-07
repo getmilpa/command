@@ -472,7 +472,7 @@ final class EffectProfile
         // sentence is KEPT, so nothing anyone wrote is lost. What is not kept is the discount:
         // reporting `guaranteed` to a policy reading this envelope today would hand out lower scrutiny
         // on the strength of a note. This RAISES scrutiny and never lowers it, which is the same rule
-        // that puts `Unknown` level with `Irreversible` instead of below it.
+        // that puts `Unknown` above `Irreversible` instead of below it.
         if ($reversibility === Reversibility::Guaranteed && !self::namesAnOperation((string) $rollback)) {
             $reversibility = Reversibility::ManualRecovery;
         }
