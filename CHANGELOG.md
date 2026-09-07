@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/getmilpa/command/compare/v0.25.0...v0.25.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* an operation is not its own inverse, and it was answering as one ([#56](https://github.com/getmilpa/command/issues/56)) ([92b9711](https://github.com/getmilpa/command/commit/92b9711b755798cac5113a366903e6ee6b185de6))
+
 ## [0.25.0](https://github.com/getmilpa/command/compare/v0.24.0...v0.25.0) (2026-09-07)
 
 
