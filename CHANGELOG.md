@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.2](https://github.com/getmilpa/command/compare/v0.25.1...v0.25.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* **effect:** an unknown reversibility outweighs an irreversible one, strictly ([#58](https://github.com/getmilpa/command/issues/58)) ([860d625](https://github.com/getmilpa/command/commit/860d6254f56f0b56c0ef00699beabef92c0871c0))
+
 ## [0.25.1](https://github.com/getmilpa/command/compare/v0.25.0...v0.25.1) (2026-09-07)
 
 
