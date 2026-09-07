@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.24.0](https://github.com/getmilpa/command/compare/v0.23.0...v0.24.0) (2026-09-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* a profile declaring `Mutation::None` with `Reversibility::Guaranteed` is now refused at construction. Every read must declare `Reversibility::NotApplicable`, or — better — call `EffectProfile::readOnly()`, which is the one place that says what a read is made of. Measured: a founded app on the previous packages does not boot until its declarations are migrated, which is the point. Archived profiles are unaffected; `fromArray()` normalises them.
+
+### Features
+
+* «nothing to undo» is not a promise to undo — Reversibility::NotApplicable ([#50](https://github.com/getmilpa/command/issues/50)) ([76ca9ca](https://github.com/getmilpa/command/commit/76ca9ca3ef63e5b875e220f5df135435faf1043a))
+
 ## [0.23.0](https://github.com/getmilpa/command/compare/v0.22.0...v0.23.0) (2026-09-06)
 
 
