@@ -216,10 +216,9 @@ final class AuthorityIsJudgedTest extends TestCase
         return new EffectProfile(
             mutation: Mutation::None,
             externality: Externality::None,
-            reversibility: Reversibility::Guaranteed,
+            reversibility: Reversibility::NotApplicable,
             authority: Authority::Read,
             subject: Subject::None,
-            rollbackContract: 'nothing ran, so there is nothing to undo',
         );
     }
 

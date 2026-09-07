@@ -107,10 +107,9 @@ final class DescentTest extends TestCase
         $suave = new EffectProfile(
             mutation: Mutation::None,
             externality: Externality::None,
-            reversibility: Reversibility::Guaranteed,
+            reversibility: Reversibility::NotApplicable,
             authority: Authority::Read,
             subject: Subject::None,
-            rollbackContract: 'reads only',
             descents: [new Descent('escalate', true, new EffectProfile(
                 mutation: Mutation::Persistent,
                 externality: Externality::ThirdParty,
@@ -258,10 +257,9 @@ final class DescentTest extends TestCase
         return new EffectProfile(
             mutation: Mutation::None,
             externality: Externality::None,
-            reversibility: Reversibility::Guaranteed,
+            reversibility: Reversibility::NotApplicable,
             authority: Authority::Read,
             subject: Subject::None,
-            rollbackContract: 'nothing ran, so there is nothing to undo',
         );
     }
 }

@@ -117,7 +117,13 @@ final class EffectProfileTest extends TestCase
         self::assertSame(Mutation::None, $profile->mutation);
         self::assertSame(Externality::None, $profile->externality);
         self::assertSame(Authority::Read, $profile->authority);
-        self::assertNotNull($profile->rollbackContract, 'even «nothing to undo» has to name itself');
+        // It used to claim `Guaranteed` backed by the prose «nothing-to-roll-back», and this assertion
+        // defended that: «even nothing to undo has to name itself». It named itself in the wrong field.
+        // `Guaranteed` is the one claim in the enum that BUYS lower scrutiny by promising a tested
+        // inverse, and a read has no effect to take back — so the AXIS says it now, and the contract is
+        // absent because there is no contract to name.
+        self::assertSame(Reversibility::NotApplicable, $profile->reversibility);
+        self::assertNull($profile->rollbackContract, 'nothing to undo names no inverse');
     }
 
     /**
