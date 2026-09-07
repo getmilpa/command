@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Milpa\Command;
 
 use Milpa\Command\Consent\OperationId;
+use Milpa\Command\Effect\EffectProfile;
 use Milpa\Command\Effect\Reversibility;
 
 /**
@@ -39,6 +40,10 @@ final readonly class RollbackContracts
     /**
      * The promises this table cannot keep: operation name → the inverse it named and nobody offers.
      *
+     * Private on purpose. It was public and nothing outside its own tests called it — a caller wants the
+     * FINDINGS, which is what a report prints and what an agent can act on, and a second public shape for
+     * the same answer is a second thing to keep true (greenhouse decisions/0213, caught by its gate).
+     *
      * Empty is the answer a house wants. Order follows the table, so a report reads in the order the
      * operations were declared.
      *
@@ -46,7 +51,7 @@ final readonly class RollbackContracts
      *
      * @return array<string, string> the promising operation's name → the canonical id it named
      */
-    public static function unresolved(iterable $operations): array
+    private static function unresolved(iterable $operations): array
     {
         $offered = [];
         $promises = [];
@@ -54,8 +59,13 @@ final readonly class RollbackContracts
         foreach ($operations as $operation) {
             $offered[(new OperationId($operation->name))->canonical] = true;
 
-            $inverse = $operation->effects?->rollbackOperation();
-            if ($operation->effects?->reversibility === Reversibility::Guaranteed && $inverse !== null) {
+            $profile = $operation->effects;
+            if (!$profile instanceof EffectProfile || $profile->reversibility !== Reversibility::Guaranteed) {
+                continue;
+            }
+
+            $inverse = $profile->rollbackOperation();
+            if ($inverse !== null) {
                 $promises[$operation->name] = $inverse->canonical;
             }
         }
