@@ -83,14 +83,14 @@ final class EffectProfileMeetTest extends TestCase
     /** meet reaches Guaranteed when EITHER side is, and must carry that side's rollback contract. */
     public function testMeetKeepsTheRollbackContractWhenReversibilityBecomesGuaranteed(): void
     {
-        $guaranteed = new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::Guaranteed, Authority::WriteAsUser, subject: Subject::Data, rollbackContract: 'delete the row');
+        $guaranteed = new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::Guaranteed, Authority::WriteAsUser, subject: Subject::Data, rollbackContract: 'rows.delete');
         $irreversible = new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::Irreversible, Authority::WriteAsUser, subject: Subject::Data);
 
         $m = $guaranteed->meet($irreversible);
 
         self::assertSame(Reversibility::Guaranteed, $m->reversibility, 'meet takes the safer reversibility');
-        self::assertSame('delete the row', $m->rollbackContract, 'and carries the guaranteed side contract, or the profile is invalid');
-        self::assertSame('delete the row', $irreversible->meet($guaranteed)->rollbackContract, 'either order');
+        self::assertSame('rows.delete', $m->rollbackContract, 'and carries the guaranteed side contract, or the profile is invalid');
+        self::assertSame('rows.delete', $irreversible->meet($guaranteed)->rollbackContract, 'either order');
     }
 
     /**
