@@ -261,6 +261,28 @@ final class EffectProfile
             $reversibility = $this->mutation === Mutation::None ? $other->reversibility : $this->reversibility;
         }
 
+        // TWO GUARANTEED ACTS WITH DIFFERENT ROLLBACKS ARE NOT ONE GUARANTEED ACT. The join of both is
+        // undone only by running BOTH rollbacks, and no single operation names that — so the honest level
+        // is `Compensatable` (a compensation exists; it is not one guaranteed inverse). Keeping the left
+        // side's contract, as this did, let the join's label depend on fold order and promised an inverse
+        // that undid half (greenhouse decisions/0224, residue; evidence/0561). Same contract, same act:
+        // that stays `Guaranteed`. A single Guaranteed side keeps its own contract.
+        $rollbackContract = null;
+        if ($reversibility === Reversibility::Guaranteed) {
+            $contracts = array_values(array_unique(array_filter(
+                [
+                    $this->reversibility === Reversibility::Guaranteed ? $this->rollbackContract : null,
+                    $other->reversibility === Reversibility::Guaranteed ? $other->rollbackContract : null,
+                ],
+                static fn (?string $c): bool => $c !== null,
+            )));
+            if (\count($contracts) > 1) {
+                $reversibility = Reversibility::Compensatable;
+            } else {
+                $rollbackContract = $contracts[0] ?? null;
+            }
+        }
+
         return new self(
             $mutation,
             $this->externality->weight() >= $other->externality->weight() ? $this->externality : $other->externality,
@@ -271,9 +293,7 @@ final class EffectProfile
             // The joined profile keeps a rollback contract ONLY while it still guarantees one. Joining a
             // guaranteed operation with an irreversible one does not produce something half-recoverable;
             // it produces something irreversible, and the contract no longer applies.
-            $reversibility === Reversibility::Guaranteed
-                ? ($this->reversibility === Reversibility::Guaranteed ? $this->rollbackContract : $other->rollbackContract)
-                : null,
+            $rollbackContract,
         );
     }
 
