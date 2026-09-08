@@ -65,6 +65,32 @@ final class AJoinDoesNotDependOnItsOrderTest extends TestCase
         self::assertTrue(self::profile(Reversibility::Irreversible)->isNoWiderThan(self::profile(Reversibility::Unknown)));
     }
 
+    /**
+     * TWO GUARANTEED ACTS WITH DIFFERENT ROLLBACKS JOIN AS COMPENSATABLE — in either order. The joined act is
+     * undone only by running both rollbacks; no single operation names that, so the join used to keep the
+     * LEFT contract: a label that depended on fold order, promising an inverse that undid half.
+     */
+    public function testTwoGuaranteedActsWithDifferentRollbacksJoinAsCompensatableWhicheverSideFoldsFirst(): void
+    {
+        $a = new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::Guaranteed, Authority::WriteAsUser, subject: Subject::Data, rollbackContract: 'undo.a');
+        $b = new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::Guaranteed, Authority::WriteAsUser, subject: Subject::Data, rollbackContract: 'undo.b');
+
+        self::assertSame(Reversibility::Compensatable, $a->join($b)->reversibility);
+        self::assertNull($a->join($b)->rollbackContract, 'no one operation undoes both');
+        self::assertEquals($b->join($a)->toArray(), $a->join($b)->toArray(), 'the same act, whichever folds first');
+    }
+
+    /** THE CONTROL: the same rollback on both sides is one act, and stays Guaranteed with that contract. */
+    public function testTheSameRollbackOnBothSidesStaysGuaranteed(): void
+    {
+        $a = new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::Guaranteed, Authority::WriteAsUser, subject: Subject::Data, rollbackContract: 'undo.same');
+        $b = new EffectProfile(Mutation::Persistent, Externality::None, Reversibility::Guaranteed, Authority::WriteAsUser, subject: Subject::Data, rollbackContract: 'undo.same');
+
+        self::assertSame(Reversibility::Guaranteed, $a->join($b)->reversibility);
+        self::assertSame('undo.same', $a->join($b)->rollbackContract);
+        self::assertSame('undo.same', $a->join(EffectProfile::readOnly())->rollbackContract, 'a single guaranteed side keeps its own');
+    }
+
     private static function profile(Reversibility $reversibility): EffectProfile
     {
         return new EffectProfile(Mutation::Persistent, Externality::None, $reversibility, Authority::WriteAsUser, subject: Subject::Data);
