@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.3](https://github.com/getmilpa/command/compare/v0.25.2...v0.25.3) (2026-09-08)
+
+
+### Bug Fixes
+
+* **effect:** two guaranteed acts with different rollbacks join as compensatable ([#60](https://github.com/getmilpa/command/issues/60)) ([468f098](https://github.com/getmilpa/command/commit/468f098866b7e4fdcb782dcc8ebeaca58fb08dfd))
+
 ## [0.25.2](https://github.com/getmilpa/command/compare/v0.25.1...v0.25.2) (2026-09-07)
 
 
