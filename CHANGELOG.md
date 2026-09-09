@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.4](https://github.com/getmilpa/command/compare/v0.25.3...v0.25.4) (2026-09-09)
+
+
+### Bug Fixes
+
+* the capability manifest speaks English ([#62](https://github.com/getmilpa/command/issues/62)) ([49f171d](https://github.com/getmilpa/command/commit/49f171d052c5fda94e6520bd11f729f6c2a93ab5))
+
 ## [0.25.3](https://github.com/getmilpa/command/compare/v0.25.2...v0.25.3) (2026-09-08)
 
 
