@@ -47,7 +47,7 @@
         "id": "command",
         "title": "One operation, every surface: CLI, MCP and HTTP from a single declaration",
         "unlocks": [
-          "coa <operaci\u00f3n>"
+          "coa <operation>"
         ],
         "provides": [
           "command.operations",
