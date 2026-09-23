@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.5](https://github.com/getmilpa/command/compare/v0.25.4...v0.25.5) (2026-09-23)
+
+
+### Bug Fixes
+
+* **manifest:** the capability names a command that runs ([#64](https://github.com/getmilpa/command/issues/64)) ([2cac6d5](https://github.com/getmilpa/command/commit/2cac6d5dd1157b1b958be577fffd5ee0ef070e14))
+
 ## [0.25.4](https://github.com/getmilpa/command/compare/v0.25.3...v0.25.4) (2026-09-09)
 
 
