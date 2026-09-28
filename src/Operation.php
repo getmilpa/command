@@ -142,6 +142,23 @@ readonly class Operation
          * the reversible, WriteAsUser, model-domain case.
          */
         public bool $createsNamedTarget = false,
+        /**
+         * The sequence a call of this operation continues, derived from its arguments — or `null`
+         * when this operation continues nothing (greenhouse decisions/0458, 0500).
+         *
+         * A long task is one sequence and many invocations: a paused recipe resumed after each
+         * answer, an agent session driven leg by leg. Only the FIRST call has to carry a signature;
+         * the ones after it cite the receipt that signature left in the sequence. For the door to
+         * know which receipt a call may cite, the operation has to say which sequence the call
+         * belongs to — and only the operation knows how its arguments name one.
+         *
+         * Declaring it changes nothing on its own. The terminal door reads it, looks for a standing
+         * receipt of THAT sequence, and re-verifies it before anything runs; with no receipt, the
+         * call is judged exactly as before.
+         *
+         * @var (\Closure(array<string, mixed>): ?string)|null
+         */
+        public ?\Closure $continues = null,
     ) {
         // A SECOND SOURCE OF TRUTH IS REFUSED AT DECLARATION, not reconciled at read time.
         //
@@ -234,5 +251,24 @@ readonly class Operation
     public function supportsSurface(string $surface): bool
     {
         return $this->surfaces === null || \in_array($surface, $this->surfaces, true);
+    }
+
+    /**
+     * The sequence these arguments continue, or null when this operation declares none.
+     *
+     * Asked of the SAME declaration for the call about to run and for the arguments a receipt
+     * signed, so a receipt binds to a sequence only when both answers agree. A blank id is no
+     * sequence: an empty string would let every unnamed call cite the same receipt.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    public function sequenceFor(array $arguments): ?string
+    {
+        if ($this->continues === null) {
+            return null;
+        }
+        $sequence = ($this->continues)($arguments);
+
+        return \is_string($sequence) && trim($sequence) !== '' ? trim($sequence) : null;
     }
 }
