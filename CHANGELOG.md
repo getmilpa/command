@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/getmilpa/command/compare/v0.25.5...v0.26.0) (2026-09-28)
+
+
+### Features
+
+* **operation:** an operation declares the sequence a call continues ([#66](https://github.com/getmilpa/command/issues/66)) ([780e91f](https://github.com/getmilpa/command/commit/780e91f9fc15a834f9ef6dd308afe1e614514ced))
+
 ## [0.25.5](https://github.com/getmilpa/command/compare/v0.25.4...v0.25.5) (2026-09-23)
 
 
