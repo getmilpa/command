@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/getmilpa/command/compare/v0.26.0...v0.27.0) (2026-09-29)
+
+
+### Features
+
+* **declaration:** run() receives the invocation context the surface attributed ([#68](https://github.com/getmilpa/command/issues/68)) ([415e646](https://github.com/getmilpa/command/commit/415e646ceceff55ce9f26e750bff5accec1f0aa8))
+
 ## [0.26.0](https://github.com/getmilpa/command/compare/v0.25.5...v0.26.0) (2026-09-28)
 
 
