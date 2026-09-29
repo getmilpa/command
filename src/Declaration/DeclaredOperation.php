@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Milpa\Command\Declaration;
 
+use Milpa\Command\InvocationContext;
 use Milpa\Command\Operation as OperationContract;
 
 /**
@@ -275,6 +276,21 @@ final class DeclaredOperation
         foreach ($run->getParameters() as $parameter) {
             $type = $parameter->getType();
 
+            // WHO IS RUNNING IT is not a collaborator and not an input: it is the context the surface attributed
+            // this call to, handed over per invocation. It must admit null, because a surface that attributes
+            // nothing passes nothing — and the operation, not this class, decides what that means for it.
+            if ($type instanceof \ReflectionNamedType && $type->getName() === InvocationContext::class) {
+                if (!$type->allowsNull()) {
+                    throw new DeclarationException(
+                        "Operation {$class}: run() takes InvocationContext \${$parameter->getName()}, which must be nullable. "
+                        . 'A surface that attributes nothing passes null; declare ?InvocationContext and answer for that case.'
+                    );
+                }
+                $types[] = InvocationContext::class;
+
+                continue;
+            }
+
             if (!$type instanceof \ReflectionNamedType || $type->isBuiltin()) {
                 throw new DeclarationException(
                     "Operation {$class}: run() takes \${$parameter->getName()}, which is not a collaborator. "
@@ -286,9 +302,11 @@ final class DeclaredOperation
             $types[] = $type->getName();
         }
 
-        if ($types !== [] && $resolve === null) {
+        $needed = array_values(array_filter($types, static fn (string $type): bool => $type !== InvocationContext::class));
+
+        if ($needed !== [] && $resolve === null) {
             throw new DeclarationException(
-                "Operation {$class}: run() needs " . implode(', ', $types) . ' but no resolver was given '
+                "Operation {$class}: run() needs " . implode(', ', $needed) . ' but no resolver was given '
                 . 'to DeclaredOperation::from(). Pass one — a declaration whose collaborators cannot be '
                 . 'found should fail at boot, not on the first request.'
             );
@@ -343,14 +361,18 @@ final class DeclaredOperation
     }
 
     /**
-     * The handler every surface already calls: `($operation->handler)($input): array`.
+     * The handler every surface already calls: `($operation->handler)($input, $context): array`.
+     *
+     * The surfaces call every handler with `($input, $context, $authority)`; the context reaches `run()` when
+     * it asks for `?InvocationContext`, and the authority never does — the policy authorizes, the operation
+     * attributes.
      *
      * @param list<array<string, mixed>> $parameters
      * @param list<class-string>         $collaborators
      */
     private static function handler(string $class, array $parameters, array $collaborators, ?\Closure $resolve): \Closure
     {
-        return static function (array $input) use ($class, $parameters, $collaborators, $resolve): array {
+        return static function (array $input, ?InvocationContext $context = null) use ($class, $parameters, $collaborators, $resolve): array {
             $arguments = [];
 
             foreach ($parameters as $parameter) {
@@ -390,6 +412,11 @@ final class DeclaredOperation
 
             $services = [];
             foreach ($collaborators as $type) {
+                if ($type === InvocationContext::class) {
+                    $services[] = $context;
+
+                    continue;
+                }
                 /** @var \Closure $resolve */
                 $services[] = $resolve($type);
             }
