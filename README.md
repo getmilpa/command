@@ -130,6 +130,12 @@ live side by side; the attribute wins where it exists.
 believe it. So are two `#[Target]`s, an input type no schema describes, and a `run()` whose
 collaborators nobody can resolve. Each refusal happens once, at declaration, and says what to declare.
 
+**Who ran it is attributed, never an argument.** A `run()` that declares `?InvocationContext $context`
+receives the context the surface attributed the call to — the verified actor behind a passkey or a
+signature, the channel, the authorizing decision — per invocation. It is not part of the input schema,
+so a caller cannot write it. It must be nullable: a surface that attributes nothing passes `null`, and
+the operation decides what that means (an approval, for instance, refuses).
+
 ## Two contracts, one atom
 
 | Contract | Role |

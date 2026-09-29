@@ -29,6 +29,10 @@ use Milpa\Command\Declaration\Needs;
 use Milpa\Command\Declaration\Operation as OperationAttribute;
 use Milpa\Command\Declaration\Reads;
 use Milpa\Command\Declaration\Target;
+use Milpa\Command\InvocationContext;
+use Milpa\Command\Tests\Declaration\Fixtures\Attributed;
+use Milpa\Command\Tests\Declaration\Fixtures\AttributedAlone;
+use Milpa\Command\Tests\Declaration\Fixtures\AttributedNonNullable;
 use Milpa\Command\Tests\Declaration\Fixtures\Bares;
 use Milpa\Command\Tests\Declaration\Fixtures\Contradictory;
 use Milpa\Command\Tests\Declaration\Fixtures\Greet;
@@ -240,6 +244,63 @@ final class DeclaredOperationTest extends TestCase
         $this->expectExceptionMessageMatches('/run\(\) needs .*Greetings but no resolver was given/');
 
         DeclaredOperation::from(Greet::class);
+    }
+
+    /**
+     * `run()` can know who is running it — from the context the surface attributed, never from its input.
+     *
+     * The surfaces already hand every handler `($input, $context, $authority)`. A declared handler used to
+     * drop the context, so an operation that must say WHO acted (who approved a gate, greenhouse
+     * decisions/0528) could only take the name as an argument — which the caller writes.
+     */
+    public function testRunReceivesTheInvocationContextTheSurfaceAttributed(): void
+    {
+        $greetings = new Greetings();
+        $operation = DeclaredOperation::from(Attributed::class, static fn (string $type): object => $greetings);
+
+        $result = ($operation->handler)(['note' => 'ship it'], InvocationContext::web('actor:rod', 'lab:attributed'));
+
+        self::assertSame('actor:rod', $result['by']);
+        self::assertTrue($result['verified']);
+        self::assertSame('web', $result['channel']);
+        self::assertSame(['ship it'], $greetings->written, 'the collaborator still arrives alongside the context');
+    }
+
+    public function testASurfaceThatAttributesNothingPassesNullAndTheOperationAnswersForIt(): void
+    {
+        $greetings = new Greetings();
+        $operation = DeclaredOperation::from(Attributed::class, static fn (string $type): object => $greetings);
+
+        $result = ($operation->handler)(['note' => 'ship it']);
+
+        self::assertNull($result['by']);
+        self::assertFalse($result['verified']);
+    }
+
+    public function testTheContextIsNotAnInputAndNeverReachesTheSchema(): void
+    {
+        $operation = DeclaredOperation::from(Attributed::class, static fn (string $type): object => new Greetings());
+
+        self::assertSame(['note'], array_keys($operation->inputSchema['properties'] ?? []));
+
+        // A caller that names an actor in its arguments names nothing: the context is not read from input.
+        $result = ($operation->handler)(['note' => 'x', 'context' => 'actor:rod', 'actor' => 'actor:rod']);
+        self::assertNull($result['by']);
+    }
+
+    public function testAnOperationThatOnlyNeedsTheContextNeedsNoResolver(): void
+    {
+        $operation = DeclaredOperation::from(AttributedAlone::class);
+
+        self::assertSame(['actor' => 'key:ABC'], ($operation->handler)([], new InvocationContext(actor: 'key:ABC', verified: true)));
+    }
+
+    public function testAContextThatCannotBeNullIsRefusedAtDeclaration(): void
+    {
+        $this->expectException(DeclarationException::class);
+        $this->expectExceptionMessageMatches('/run\(\) takes InvocationContext \$context, which must be nullable/');
+
+        DeclaredOperation::from(AttributedNonNullable::class);
     }
 
     public function testAClassThatDeclaresNothingIsNotAnOperation(): void
