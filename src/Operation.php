@@ -159,7 +159,40 @@ readonly class Operation
          * @var (\Closure(array<string, mixed>): ?string)|null
          */
         public ?\Closure $continues = null,
+        /**
+         * The OTHER operations whose standing receipt a call of this one may cite, in the same sequence —
+         * empty when it cites only a receipt its own operation signed (greenhouse decisions/0526 §2).
+         *
+         * A receipt names the operation it signed, and the door refuses a citation by any other: a
+         * signature on `agent` consented to driving a session, not to whatever else touches it. Some
+         * calls are PART of what the signed one opened — answering the question a signed leg asked
+         * is — and only the operation that answers can say so. What it names here widens nothing
+         * else: the citation is still re-verified, bound to the SAME sequence (this operation's
+         * {@see self::$continues} applied to the arguments the receipt signed), and judged against
+         * who the signer is today.
+         *
+         * Requires {@see self::$continues}: a receipt with no sequence to bind to would be a key
+         * that opens every sequence the named operation ever signed.
+         *
+         * @var list<string>
+         */
+        public array $citesReceiptsOf = [],
     ) {
+        if ($this->citesReceiptsOf !== [] && $this->continues === null) {
+            throw new \InvalidArgumentException(
+                "Operation '{$this->name}' names receipts it may cite (" . implode(', ', $this->citesReceiptsOf) . ') '
+                . 'but declares no sequence (continues). A citation binds to a sequence; without one it '
+                . 'would open every sequence those operations ever signed.'
+            );
+        }
+        foreach ($this->citesReceiptsOf as $cited) {
+            if (trim($cited) === '') {
+                throw new \InvalidArgumentException(
+                    "Operation '{$this->name}' names a blank operation among the receipts it may cite. Name each one."
+                );
+            }
+        }
+
         // A SECOND SOURCE OF TRUTH IS REFUSED AT DECLARATION, not reconciled at read time.
         //
         // `mutating: true` with `Mutation::None` is not a state anyone should have to resolve later;
@@ -270,5 +303,14 @@ readonly class Operation
         $sequence = ($this->continues)($arguments);
 
         return \is_string($sequence) && trim($sequence) !== '' ? trim($sequence) : null;
+    }
+
+    /**
+     * Whether a call of this operation may cite a standing receipt that `$operation` signed: its own, or one it
+     * names in {@see self::$citesReceiptsOf}. The sequence binding is the door's to check, not this answer's.
+     */
+    public function mayCiteReceiptOf(string $operation): bool
+    {
+        return $operation === $this->name || \in_array($operation, $this->citesReceiptsOf, true);
     }
 }
