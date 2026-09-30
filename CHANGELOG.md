@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/getmilpa/command/compare/v0.27.0...v0.28.0) (2026-09-30)
+
+
+### Features
+
+* **declaration:** an operation names the other receipts it may cite ([#70](https://github.com/getmilpa/command/issues/70)) ([cd14758](https://github.com/getmilpa/command/commit/cd14758d4ff0456c09cb88dfd5b5d5d8b0ca1d2c))
+
 ## [0.27.0](https://github.com/getmilpa/command/compare/v0.26.0...v0.27.0) (2026-09-29)
 
 
