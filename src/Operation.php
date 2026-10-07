@@ -177,7 +177,40 @@ readonly class Operation
          * @var list<string>
          */
         public array $citesReceiptsOf = [],
+        /**
+         * Whether this operation AMENDS the entity {@see $namedTarget} names — changes, in place, one that
+         * exists — so that a session's own record can say where that entity came from (greenhouse decisions/0596).
+         *
+         * {@see $createsNamedTarget} drew the intent contract's line by the verb: `implement` materialises and is
+         * not asked, `edit` selects what exists and is. The record drew it elsewhere. Of 34 times a house asked a
+         * person to confirm an `edit`, 28 were about a class that same session had brought into the house a moment
+         * before: nothing the person already had was being selected. Correcting what one has just materialised is
+         * still materialising — the model's interpretive domain; touching what was already there is selecting, and
+         * stays the human's.
+         *
+         * So the target of an operation that declares this is NAMED when the session's record says where it came
+         * from: the session brought it into the house and it is still what the session left, or the call repairs a
+         * proposal of that same session. Who decides that is not this class: it is the session's floor, reading
+         * facts, with no model in the circuit. What the record does not say keeps being asked.
+         *
+         * Defaults to `false` — fail-closed. The declaration speaks of a target, so it needs one; and an operation
+         * cannot both create its target and amend one that exists. Both are refused at declaration.
+         */
+        public bool $amendsNamedTarget = false,
     ) {
+        if ($this->amendsNamedTarget && $this->namedTarget === null) {
+            throw new \InvalidArgumentException(
+                "Operation '{$this->name}' declares that it amends its named target and names none. The declaration "
+                . 'speaks of a target: declare namedTarget, or drop it.'
+            );
+        }
+        if ($this->amendsNamedTarget && $this->createsNamedTarget) {
+            throw new \InvalidArgumentException(
+                "Operation '{$this->name}' declares that it creates its named target AND that it amends it. One that "
+                . 'creates its target is never asked about it; one that amends an existing target is asked unless the '
+                . "session's record says where the target came from. Declare the one this operation does."
+            );
+        }
         if ($this->citesReceiptsOf !== [] && $this->continues === null) {
             throw new \InvalidArgumentException(
                 "Operation '{$this->name}' names receipts it may cite (" . implode(', ', $this->citesReceiptsOf) . ') '
