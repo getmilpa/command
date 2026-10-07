@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/getmilpa/command/compare/v0.28.0...v0.29.0) (2026-10-07)
+
+
+### Features
+
+* an operation says it amends the target it names (greenhouse decisions/0596) ([#73](https://github.com/getmilpa/command/issues/73)) ([e72b086](https://github.com/getmilpa/command/commit/e72b086a4407d199b614fc75d46adcef308b8dfc))
+
 ## [0.28.0](https://github.com/getmilpa/command/compare/v0.27.0...v0.28.0) (2026-09-30)
 
 
