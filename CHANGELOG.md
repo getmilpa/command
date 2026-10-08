@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/getmilpa/command/compare/v0.29.0...v0.29.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* what Composer installs carries no tests, nor a machine's name with them ([#77](https://github.com/getmilpa/command/issues/77)) ([31535a8](https://github.com/getmilpa/command/commit/31535a85ee059398eec1cc4fc5e92740710dab52))
+
 ## [0.29.0](https://github.com/getmilpa/command/compare/v0.28.0...v0.29.0) (2026-10-07)
 
 
