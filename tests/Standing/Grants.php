@@ -48,7 +48,7 @@ final class Grants
                 'authority' => 'write_as_user',
                 'subject' => 'executable',
             ],
-            'conditions' => [['name' => 'no-host-names', 'statement' => 'what is published names no machine', 'by' => ['operation' => 'lab:scan']]],
+            'conditions' => [['name' => 'no-host-names', 'statement' => 'what is published names no machine', 'by' => ['operation' => 'lab:scan', 'free' => ['path']]]],
             'undo' => 'withdraw the release and publish the one before it',
             'falsifier' => ['name' => 'a-published-name', 'statement' => 'a published release names a machine', 'watcher' => ['operation' => 'lab:watch'], 'within_seconds' => 3600],
         ];

@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Milpa\Command\Standing;
 
 use Milpa\Command\Consent\OperationId;
+use Milpa\Command\Effect\Authority;
 use Milpa\Command\Effect\EffectProfile;
 use Milpa\Command\Effect\Reversibility;
 
@@ -48,6 +49,10 @@ use Milpa\Command\Effect\Reversibility;
  *
  *   · a ceiling with an unclassified axis — measured: an unclassified ceiling admits everything;
  *   · a ceiling above «compensatable» — a grant never lends what cannot at least be compensated;
+ *   · a ceiling whose AUTHORITY is above «write_as_user» — nothing a grant lends may itself give
+ *     authority. The floor is the axis that says it, not a list of words: measured on the published
+ *     catalogue, thirteen operations declare institutional authority and four of them ask for the word
+ *     a list would have looked for (greenhouse decisions/0615, «Lo que la revisión encontró», 4);
  *   · covering any `standing.*` operation — nothing a grant lends may give, restore or withdraw a grant;
  *   · no condition at all — that is the scope handed over whole, with a watcher;
  *   · a falsifier nothing watches — {@see Falsifier}.
@@ -72,9 +77,12 @@ final readonly class StandingGrant
     /** The highest reversibility a ceiling may carry. */
     public const Reversibility CEILING_REVERSIBILITY = Reversibility::Compensatable;
 
+    /** The highest authority a ceiling may carry: acting as a user. Above it an act decides what the house believes. */
+    public const Authority CEILING_AUTHORITY = Authority::WriteAsUser;
+
     private const ID = '/^[a-z0-9][a-z0-9._-]{0,62}$/';
 
-    private const KEYS = ['id', 'supersedes', 'to', 'covers', 'ceiling', 'conditions', 'undo', 'falsifier', 'expires_at'];
+    private const KEYS = ['id', 'supersedes', 'lifts', 'to', 'covers', 'ceiling', 'conditions', 'undo', 'falsifier', 'expires_at'];
 
     /** @var list<string> */
     public array $to;
@@ -89,6 +97,9 @@ final readonly class StandingGrant
      * @param array<array-key, mixed> $to         the seats it lends to, each by the key the host knows it by
      * @param array<array-key, mixed> $covers     the calls it names
      * @param array<array-key, mixed> $conditions what must be measured on the content an act touches
+     * @param string|null             $lifts      for a grant that supersedes a SUSPENDED one: the suspension it lifts,
+     *                                            by the digest the host shows for it. Taking a suspended grant out of
+     *                                            the way is growing back, and growing back names what it lifts
      */
     public function __construct(
         public string $id,
@@ -100,12 +111,17 @@ final readonly class StandingGrant
         public Falsifier $falsifier,
         public ?string $supersedes = null,
         public ?\DateTimeImmutable $expiresAt = null,
+        public ?string $lifts = null,
     ) {
         if (preg_match(self::ID, $id) !== 1) {
             throw new \InvalidArgumentException("a standing grant is known by a short id — lowercase letters, digits, dot, dash or underscore, e.g. «m-01»; got «{$id}»");
         }
         if ($supersedes !== null && (preg_match(self::ID, $supersedes) !== 1 || $supersedes === $id)) {
             throw new \InvalidArgumentException("standing grant «{$id}» supersedes another grant by its id, and never itself; got «{$supersedes}»");
+        }
+
+        if ($lifts !== null && ($supersedes === null || trim($lifts) === '')) {
+            throw new \InvalidArgumentException("standing grant «{$id}» says «lifts» only together with «supersedes»: it names the suspension of the grant it replaces, by its digest");
         }
 
         $seats = [];
@@ -128,6 +144,9 @@ final readonly class StandingGrant
             if (!$act instanceof NamedCall) {
                 throw new \InvalidArgumentException("standing grant «{$id}» covers named calls, one by one");
             }
+            if ($act->free !== []) {
+                throw new \InvalidArgumentException("standing grant «{$id}» gives «free» for «{$act->operation->canonical}» in «covers», where nothing reads it: a covered act already leaves free every argument it does not fix");
+            }
             if ($act->operation->canonical === 'standing' || str_starts_with($act->operation->canonical, 'standing.')) {
                 throw new \InvalidArgumentException(\sprintf(
                     'standing grant «%s» cannot cover «%s»: nothing a grant lends may give, restore, withdraw or stop a grant. Those stay acts of a person, or of anyone who only narrows.',
@@ -146,6 +165,15 @@ final readonly class StandingGrant
                 $id,
                 $ceiling->reversibility->value,
                 self::CEILING_REVERSIBILITY->value,
+            ));
+        }
+
+        if ($ceiling->authority->weight() > self::CEILING_AUTHORITY->weight()) {
+            throw new \InvalidArgumentException(\sprintf(
+                'standing grant «%s» sets a ceiling of authority «%s». An act above «%s» itself gives authority — it decides what the house believes or does — and no grant lends one. It stays a person\'s act, signed each time.',
+                $id,
+                $ceiling->authority->value,
+                self::CEILING_AUTHORITY->value,
             ));
         }
 
@@ -213,6 +241,7 @@ final readonly class StandingGrant
         return [
             'id' => $this->id,
             'supersedes' => $this->supersedes,
+            'lifts' => $this->lifts,
             'to' => $this->to,
             'covers' => array_map(static fn (NamedCall $act): array => $act->toArray(), $this->covers),
             'ceiling' => [
@@ -268,6 +297,10 @@ final readonly class StandingGrant
         if ($supersedes !== null && !\is_string($supersedes)) {
             throw new \InvalidArgumentException("{$where} supersedes another grant by its id");
         }
+        $lifts = $data['lifts'] ?? null;
+        if ($lifts !== null && !\is_string($lifts)) {
+            throw new \InvalidArgumentException("{$where} says what it «lifts» by the digest of that suspension");
+        }
 
         return new self(
             id: $id,
@@ -279,6 +312,7 @@ final readonly class StandingGrant
             falsifier: Falsifier::fromArray($data['falsifier'] ?? null),
             supersedes: $supersedes,
             expiresAt: $expiresAt,
+            lifts: $lifts,
         );
     }
 

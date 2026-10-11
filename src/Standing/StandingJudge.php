@@ -131,7 +131,7 @@ final class StandingJudge
             $measuring = $condition->by->operation->forCli();
             $last = null;
             foreach ($standing->receipts as $receipt) {
-                if ($receipt->subject === $call->subject && $condition->by->matches($receipt->by, $receipt->arguments)) {
+                if ($receipt->subject === $call->subject && $condition->by->matchesExactly($receipt->by, $receipt->arguments)) {
                     $last = $receipt;
                 }
             }

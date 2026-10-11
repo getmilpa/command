@@ -220,9 +220,26 @@ supersedes it by name. Expired, revoked and superseded grants stop nobody. Other
 passes is enough, and when none does, the refusal that got furthest speaks.
 
 Some documents cannot be written at all. `StandingGrant` refuses, at construction: a ceiling with an
-unclassified axis, a ceiling above `compensatable`, covering any `standing.*` operation, a grant
-with no condition, a falsifier nothing watches, and **any key it does not read** — a line the judge
-would ignore is a limit nobody keeps.
+unclassified axis, a ceiling above `compensatable`, a ceiling whose **authority** is above
+`write_as_user` (an act above it itself gives authority, and no grant lends one), covering any
+`standing.*` operation, a grant with no condition, a falsifier nothing watches, and **any key it
+does not read** — a line the judge would ignore is a limit nobody keeps.
+
+A grant names calls in two ways, and the difference is deliberate. What it **covers** is matched
+openly: the call carries each fixed argument, and the rest is free — the candidate changes on every
+call. The operation that **measures** a condition and the one that **watches** the falsifier are
+matched closed (`NamedCall::matchesExactly()`): besides the fixed arguments a call may carry only
+those listed in `free`, typically the one that says which candidate. An open match fails open
+there — a later run with `--lenient` would speak for the condition.
+
+```json
+"conditions": [{"name": "no-host-names", "statement": "what is published names no machine",
+                "by": {"operation": "release:scan", "arguments": {"strict": true}, "free": ["archive"]}}]
+```
+
+A grant that supersedes a **suspended** one says which suspension it lifts (`lifts`, beside
+`supersedes`): taking a suspended grant out of the way is growing back, and growing back names what
+it lifts.
 
 **What it cannot say: money.** There is no effect axis for it, so no ceiling bounds what a call
 spends, and nothing in an operation's declaration says that it spends. "Do not grant over an

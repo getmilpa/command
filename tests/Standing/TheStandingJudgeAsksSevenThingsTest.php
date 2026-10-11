@@ -173,7 +173,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
 
     public function testAnArgumentTheConditionFixesForItsInstrumentMustHaveBeenCarried(): void
     {
-        $grant = Grants::grant(['conditions' => [['name' => 'no-host-names', 'statement' => 'strictly', 'by' => ['operation' => 'lab:scan', 'arguments' => ['strict' => true]]]]]);
+        $grant = Grants::grant(['conditions' => [['name' => 'no-host-names', 'statement' => 'strictly', 'by' => ['operation' => 'lab:scan', 'arguments' => ['strict' => true], 'free' => ['path']]]]]);
 
         self::assertSame('not_measured', StandingJudge::judge($grant, Grants::standing(), Grants::call())->reason);
         self::assertTrue(StandingJudge::judge($grant, Grants::standing([Grants::receipt(arguments: ['path' => 'candidate.tar', 'strict' => true])]), Grants::call())->passes());
@@ -216,8 +216,8 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
     public function testEveryConditionNeedsItsOwnReceipt(): void
     {
         $grant = Grants::grant(['conditions' => [
-            ['name' => 'no-host-names', 'statement' => 'names no machine', 'by' => ['operation' => 'lab:scan']],
-            ['name' => 'builds', 'statement' => 'the candidate builds', 'by' => ['operation' => 'lab:build']],
+            ['name' => 'no-host-names', 'statement' => 'names no machine', 'by' => ['operation' => 'lab:scan', 'free' => ['path']]],
+            ['name' => 'builds', 'statement' => 'the candidate builds', 'by' => ['operation' => 'lab:build', 'free' => ['path']]],
         ]]);
         $scan = Grants::receipt();
         $build = Grants::receipt(by: 'lab:build');
@@ -264,7 +264,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
 
     public function testAmongSeveralGrantsOneThatPassesIsEnough(): void
     {
-        $unmeasured = self::held('asks-more', change: ['conditions' => [['name' => 'builds', 'statement' => 'it builds', 'by' => ['operation' => 'lab:build']]]]);
+        $unmeasured = self::held('asks-more', change: ['conditions' => [['name' => 'builds', 'statement' => 'it builds', 'by' => ['operation' => 'lab:build', 'free' => ['path']]]]]);
         $answer = StandingJudge::among([$unmeasured, self::held('first-that-passes'), self::held('also-passes')], Grants::call());
 
         self::assertNotNull($answer);
