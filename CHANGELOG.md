@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.1](https://github.com/getmilpa/command/compare/v0.30.0...v0.30.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* the refusal of an expiry that is not a date says a form, not an example ([#83](https://github.com/getmilpa/command/issues/83)) ([477ed30](https://github.com/getmilpa/command/commit/477ed30272c83053654fdb907c117b833d06ce60))
+
 ## [0.30.0](https://github.com/getmilpa/command/compare/v0.29.2...v0.30.0) (2026-10-11)
 
 
