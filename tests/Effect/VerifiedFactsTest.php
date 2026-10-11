@@ -42,10 +42,10 @@ final class VerifiedFactsTest extends TestCase
     /** 2 · a terminal's os-user is a fact, but an unverified one — the useful, honest default. */
     public function testATerminalPrincipalIsUnverified(): void
     {
-        $principal = VerifiedPrincipal::fromTerminal('rod', 'laptop');
+        $principal = VerifiedPrincipal::fromTerminal('operator', 'example.com');
 
         self::assertFalse($principal->toFacts()->verified);
-        self::assertSame('cli:rod@laptop', $principal->principal);
+        self::assertSame('cli:operator@example.com', $principal->principal);
     }
 
     /**
@@ -100,7 +100,7 @@ final class VerifiedFactsTest extends TestCase
     /** 6 · the terminal path can never be talked up: fromTerminal is verified:false by construction. */
     public function testTheTerminalPathHasNoProofToCarry(): void
     {
-        $arr = VerifiedPrincipal::fromTerminal('rod', 'laptop')->toArray();
+        $arr = VerifiedPrincipal::fromTerminal('operator', 'example.com')->toArray();
 
         self::assertArrayNotHasKey('method', array_filter($arr, static fn ($v) => $v !== null));
         self::assertFalse(VerifiedPrincipal::fromArray($arr)->toFacts()->verified);
