@@ -166,6 +166,66 @@ authorisation at every link of the chain: ask "remove the old plugin" and a samp
 with no fact saying why. With the contract declared, an unnamed target becomes a question instead.
 The doubt belongs to the operation that discovers a concrete operation cannot exist yet.
 
+## A standing grant, and the judgment of one call under it
+
+Some acts repeat, and a person should not have to sign each one. The only way to let a seat repeat
+an act used to be handing it the scope whole: no ceiling, no condition, nothing to take it back when
+the evidence changes. A **standing grant** is narrower than that on every count. A person signs it
+once; it names the seats, the operations, the widest effect a call may have, what must have been
+**measured on the very content the act touches**, and what would show the grant was wrong to give.
+
+An operation says what content a call acts on, as a digest derived from the bytes:
+
+```php
+new Operation(
+    name: 'release:publish',
+    // …
+    actsOn: static fn (array $arguments): ?string => is_file($arguments['archive'])
+        ? 'sha256:' . hash_file('sha256', $arguments['archive'])
+        : null,
+);
+```
+
+The operation that measures a condition declares the same thing, and a host joins the two **by
+content, never by clock**: a measurement taken on another candidate, or after the act, is not this
+one. `StandingJudge::judge()` then asks seven things, in order, and the first that fails is the
+verdict:
+
+| # | Check | Refuses when |
+|---|-------|--------------|
+| 1 | `Named` | the grant does not name this operation, these arguments and this seat — the call is then judged as it was before any grant existed |
+| 2 | `Signature` | the grant's signature does not hold *now* |
+| 3 | `InForce` | it is suspended, superseded, revoked, or past its own date |
+| 4 | `Watched` | the operation watching its falsifier gave no sign of life within its window |
+| 5 | `Subject` | the operation cannot say what content this call acts on |
+| 6 | `Ceiling` | the effect of this call is wider than the grant's ceiling (`EffectProfile::isNoWiderThan`, the one comparator) |
+| 7 | `Conditions` | a condition has no green receipt on this content, from the instrument as it is today |
+
+```php
+$verdict = StandingJudge::judge($grant, $standing, $call);
+
+$verdict->named();    // false: not this grant's call
+$verdict->passes();   // true: every check held; $verdict->cited are the receipts it ran on
+$verdict->failed;     // the StandingCheck that refused, with $verdict->sentence for the reader
+```
+
+The judgment is pure: it reads a `StandingGrant`, the facts a host gathered about it
+(`GrantStanding`) and the call as facts (`StandingCall`). It never grants, widens or restores —
+growing back is a person's new signature, and it happens in the host.
+
+Some documents cannot be written at all. `StandingGrant` refuses, at construction: a ceiling with an
+unclassified axis, a ceiling above `compensatable`, covering any `standing.*` operation, a grant
+with no condition, a falsifier nothing watches, and **any key it does not read** — a line the judge
+would ignore is a limit nobody keeps.
+
+**What it cannot say: money.** There is no effect axis for it, so no ceiling bounds what a call
+spends, and nothing in an operation's declaration says that it spends. "Do not grant over an
+operation that spends" is a rule for whoever signs, not something this package can hold.
+
+And one limit of the receipt: it pins the measuring operation by `Operation::instrumentDigest()` —
+its declaration and the body of its handler. A handler that delegates changes behaviour without
+changing that digest.
+
 ## Requirements
 
 - PHP **≥ 8.3**

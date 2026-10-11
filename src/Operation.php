@@ -197,6 +197,27 @@ readonly class Operation
          * cannot both create its target and amend one that exists. Both are refused at declaration.
          */
         public bool $amendsNamedTarget = false,
+        /**
+         * WHAT a call of this operation acts on, as the digest of its content, derived from the call's
+         * arguments — or `null` when this operation does not say (greenhouse decisions/0615).
+         *
+         * A condition measured on one candidate says nothing about another, and «the same candidate» cannot
+         * be a name, a path or a moment: a file is rewritten under its name, and a measurement taken after
+         * the act legalizes nothing. So the operation that measures and the operation that acts each declare
+         * how their arguments lead to the bytes they touch, and a host joins the two by that digest — by
+         * content, never by clock. The value is derived FROM THE BYTES (the sha256 of the candidate's
+         * archive, the id of a commit); it never arrives as an argument, because a digest the caller hands
+         * in is a statement, not a reading.
+         *
+         * Declaring it changes nothing on its own. A host that judges a standing grant reads it through
+         * {@see self::actsOnDigest()}; an operation that declares none answers `null` there, and not being
+         * able to look is not having looked: no grant applies to a call that cannot say what it touches.
+         *
+         * LAST on purpose, like every field added to this constructor: positional callers keep working.
+         *
+         * @var (\Closure(array<string, mixed>): ?string)|null
+         */
+        public ?\Closure $actsOn = null,
     ) {
         if ($this->amendsNamedTarget && $this->namedTarget === null) {
             throw new \InvalidArgumentException(
@@ -298,16 +319,92 @@ readonly class Operation
             return null;
         }
 
-        $reflejo = new \ReflectionFunction(\Closure::fromCallable($this->handler));
-        $archivo = $reflejo->getFileName();
-        $lineas = $archivo === false ? false : file($archivo);
-        if ($lineas === false) {
+        return self::bodyDigest(\Closure::fromCallable($this->handler));
+    }
+
+    /**
+     * The digest of the content this call acts on, or `null` when this operation cannot say.
+     *
+     * Asked of the SAME declaration for the call that measures and for the call that acts, so the two
+     * meet only when both answers agree. `null` covers every way of not knowing — no declaration, a
+     * declaration that answered nothing for these arguments, one that threw because the candidate is
+     * not there — and all of them mean the same to a judge: nothing can be bound to this call.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    public function actsOnDigest(array $arguments): ?string
+    {
+        if ($this->actsOn === null) {
             return null;
         }
 
-        $cuerpo = \array_slice($lineas, $reflejo->getStartLine() - 1, $reflejo->getEndLine() - $reflejo->getStartLine() + 1);
+        try {
+            $digest = ($this->actsOn)($arguments);
+        } catch (\Throwable) {
+            return null;
+        }
 
-        return 'sha256:' . hash('sha256', implode('', $cuerpo));
+        return \is_string($digest) && trim($digest) !== '' ? trim($digest) : null;
+    }
+
+    /**
+     * What makes this operation the INSTRUMENT it is today: its identity, its inputs, its declared
+     * effects, the body of its handler and the body of what says what it acts on — in one digest
+     * (greenhouse decisions/0615).
+     *
+     * A condition receipt pins it. A guard that did not see, hardened afterwards, is another
+     * instrument: what the old one measured green says nothing about what the new one would find, so a
+     * receipt taken by a different digest does not count. It carries the limit {@see self::handlerDigest()}
+     * declares — a handler that delegates changes behaviour without changing this — and says so rather
+     * than hide it.
+     *
+     * `null` when either body cannot be read, or when the operation does not say what it acts on: an
+     * instrument that cannot be pinned, or that measures nothing in particular, yields no receipt worth
+     * keeping.
+     */
+    public function instrumentDigest(): ?string
+    {
+        $handler = $this->handlerDigest();
+        $subject = $this->actsOn === null ? null : self::bodyDigest($this->actsOn);
+        if ($handler === null || $subject === null) {
+            return null;
+        }
+
+        $effects = $this->effectCeiling();
+        $scopes = $this->scopes;
+        sort($scopes);
+
+        return 'sha256:' . hash('sha256', Standing\Canonical::json([
+            'acts_on' => $subject,
+            'effects' => [
+                'authority' => $effects->authority->value,
+                'externality' => $effects->externality->value,
+                'mutation' => $effects->mutation->value,
+                'reversibility' => $effects->reversibility->value,
+                'subject' => $effects->subject->value,
+            ],
+            'handler' => $handler,
+            'inputs' => $this->inputSchema,
+            'mutating' => $this->mutating,
+            'operation' => (new Consent\OperationId($this->name))->canonical,
+            'permission' => $this->permission,
+            'scopes' => $scopes,
+        ]));
+    }
+
+    /** The digest of a closure's source lines, or `null` when they cannot be read. */
+    private static function bodyDigest(\Closure $closure): ?string
+    {
+        $reflection = new \ReflectionFunction($closure);
+        $file = $reflection->getFileName();
+        $lines = $file === false ? false : file($file);
+        if ($lines === false) {
+            return null;
+        }
+
+        $body = \array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1);
+
+        return 'sha256:' . hash('sha256', implode('', $body));
     }
 
     /**
