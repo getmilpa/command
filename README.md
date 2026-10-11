@@ -213,6 +213,12 @@ The judgment is pure: it reads a `StandingGrant`, the facts a host gathered abou
 (`GrantStanding`) and the call as facts (`StandingCall`). It never grants, widens or restores —
 growing back is a person's new signature, and it happens in the host.
 
+A house may hold several grants that name the same call. `StandingJudge::among()` says which
+answer stands, and **shrinking wins**: a grant that names the call and is suspended refuses it,
+whatever another grant would lend — until a person lifts that suspension or gives a grant that
+supersedes it by name. Expired, revoked and superseded grants stop nobody. Otherwise one grant that
+passes is enough, and when none does, the refusal that got furthest speaks.
+
 Some documents cannot be written at all. `StandingGrant` refuses, at construction: a ceiling with an
 unclassified axis, a ceiling above `compensatable`, covering any `standing.*` operation, a grant
 with no condition, a falsifier nothing watches, and **any key it does not read** — a line the judge

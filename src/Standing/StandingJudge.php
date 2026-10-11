@@ -35,6 +35,11 @@ use Milpa\Command\Effect\EffectProfile;
  * matters more than telling the caller its candidate was not measured: measuring would not help. Only
  * a grant that stands asks what the caller can actually fix — the subject, the ceiling, the conditions.
  *
+ * ── MORE THAN ONE GRANT ─────────────────────────────────────────────────────────────────────────
+ *
+ * {@see self::judge()} answers for one grant. A house may hold several that name the same call, and how
+ * their answers combine is part of the judgment too: {@see self::among()}.
+ *
  * ── THE ONE COMPARATOR ──────────────────────────────────────────────────────────────────────────
  *
  * The ceiling is asked with {@see EffectProfile::isNoWiderThan()} and with nothing else. A second
@@ -166,6 +171,71 @@ final class StandingJudge
             \count($cited),
             $call->subject,
         ), $cited);
+    }
+
+    /**
+     * ONE CALL UNDER EVERY GRANT A HOST HOLDS: which answer stands — or `null` when none of them names the call.
+     *
+     * Each grant is judged by {@see self::judge()}, alone; this only says how their answers combine, and it adds
+     * no criterion to any of them:
+     *
+     *   · A grant that names the call and is SUSPENDED refuses it, whatever another grant would lend. Shrinking
+     *     wins (greenhouse decisions/0613 §4): a suspension that a second grant walks around is not a suspension.
+     *     What takes a grant out of the way is a person's act that names it — lifting that suspension, or giving
+     *     a grant that supersedes it — and a host then no longer reports it as suspended. Expired, revoked and
+     *     superseded grants are not suspended: they lend nothing and stop nobody.
+     *   · Otherwise one grant that passes is enough.
+     *   · Otherwise the refusal that got furthest through the seven checks speaks — it is the one the caller is
+     *     closest to — and, level with another, the later grant's.
+     *
+     * @param list<array{grant: StandingGrant, standing: GrantStanding}> $grants every grant the host holds that may
+     *                                                                           concern the call, in the order they
+     *                                                                           were given
+     *
+     * @return array{grant: StandingGrant, verdict: StandingVerdict}|null
+     */
+    public static function among(array $grants, StandingCall $call): ?array
+    {
+        $suspended = null;
+        $passed = null;
+        $furthest = null;
+        $naming = 0;
+        foreach ($grants as ['grant' => $grant, 'standing' => $standing]) {
+            $verdict = self::judge($grant, $standing, $call);
+            if (!$verdict->named()) {
+                continue;
+            }
+            ++$naming;
+            $answer = ['grant' => $grant, 'verdict' => $verdict];
+            if ($standing->state === GrantState::Suspended) {
+                $suspended = $answer;
+            } elseif ($verdict->passes()) {
+                $passed ??= $answer;
+            } elseif ($furthest === null || self::reached($verdict) >= self::reached($furthest['verdict'])) {
+                $furthest = $answer;
+            }
+        }
+
+        if ($suspended !== null && $naming > 1) {
+            $verdict = $suspended['verdict'];
+
+            return ['grant' => $suspended['grant'], 'verdict' => StandingVerdict::refuse(
+                $verdict->failed ?? StandingCheck::InForce,
+                $verdict->reason,
+                $verdict->sentence . \sprintf(
+                    ' Another grant names this call too, and it lends nothing while «%1$s» is suspended: a person lifts that suspension, or gives a grant that supersedes «%1$s» by name.',
+                    $suspended['grant']->id,
+                ),
+            )];
+        }
+
+        return $suspended ?? $passed ?? $furthest;
+    }
+
+    /** How far through the seven checks a refusal got. */
+    private static function reached(StandingVerdict $verdict): int
+    {
+        return (int) array_search($verdict->failed, StandingCheck::cases(), true);
     }
 
     /** A profile's five axes as a reader sees them — a description, never a comparison. */

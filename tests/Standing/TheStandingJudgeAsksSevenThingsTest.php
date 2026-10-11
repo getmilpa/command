@@ -246,4 +246,128 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
         $broken = new GrantStanding(GrantState::Suspended, signatureFault: 'its bytes were altered');
         self::assertSame(StandingCheck::Signature, StandingJudge::judge(Grants::grant(), $broken, Grants::call())->failed);
     }
+
+    /**
+     * @param array<string, mixed> $change
+     *
+     * @return array{grant: \Milpa\Command\Standing\StandingGrant, standing: GrantStanding}
+     */
+    private static function held(string $id, ?GrantStanding $standing = null, array $change = []): array
+    {
+        return ['grant' => Grants::grant(['id' => $id] + $change), 'standing' => $standing ?? Grants::standing()];
+    }
+
+    private static function suspended(): GrantStanding
+    {
+        return new GrantStanding(GrantState::Suspended, 'its falsifier fired', watcherSignalAt: Grants::at('2026-10-11T11:50:00Z'), receipts: [Grants::receipt()], instruments: ['lab.scan' => Grants::INSTRUMENT]);
+    }
+
+    public function testAmongSeveralGrantsOneThatPassesIsEnough(): void
+    {
+        $unmeasured = self::held('asks-more', change: ['conditions' => [['name' => 'builds', 'statement' => 'it builds', 'by' => ['operation' => 'lab:build']]]]);
+        $answer = StandingJudge::among([$unmeasured, self::held('first-that-passes'), self::held('also-passes')], Grants::call());
+
+        self::assertNotNull($answer);
+        self::assertTrue($answer['verdict']->passes());
+        self::assertSame('first-that-passes', $answer['grant']->id);
+    }
+
+    public function testNoGrantThatNamesTheCallIsNoAnswerAtAll(): void
+    {
+        self::assertNull(StandingJudge::among([], Grants::call()));
+        self::assertNull(StandingJudge::among([self::held('for-another-seat'), self::held('suspended-for-another-seat', self::suspended())], Grants::call(seat: 'ANOTHER-SEAT')));
+    }
+
+    public function testASuspendedGrantThatNamesTheCallRefusesItWhateverAnotherWouldLend(): void
+    {
+        // Shrinking wins: a suspension a second grant walks around is not a suspension. Given before it or after it.
+        foreach ([[self::held('stopped', self::suspended()), self::held('would-lend')], [self::held('would-lend'), self::held('stopped', self::suspended())]] as $grants) {
+            self::assertTrue(StandingJudge::judge($grants[0]['grant'], Grants::standing(), Grants::call())->passes(), 'control: alone and in force, each of them lends');
+
+            $answer = StandingJudge::among($grants, Grants::call());
+
+            self::assertNotNull($answer);
+            self::assertFalse($answer['verdict']->passes());
+            self::assertSame('stopped', $answer['grant']->id);
+            self::assertSame(StandingCheck::InForce, $answer['verdict']->failed);
+            self::assertSame('suspended', $answer['verdict']->reason);
+            self::assertStringContainsString('Standing grant «stopped» is suspended', $answer['verdict']->sentence);
+            self::assertStringContainsString('Another grant names this call too, and it lends nothing while «stopped» is suspended', $answer['verdict']->sentence);
+            self::assertStringContainsString('gives a grant that supersedes «stopped» by name', $answer['verdict']->sentence);
+        }
+    }
+
+    public function testASuspendedGrantSpeaksEvenWhenAnotherRefusalGotFurther(): void
+    {
+        // The caller could measure its candidate, and it would change nothing: the suspension is what decides.
+        $answer = StandingJudge::among([self::held('stopped', self::suspended()), self::held('unmeasured', Grants::standing([]))], Grants::call());
+
+        self::assertSame('stopped', $answer['grant']->id ?? null);
+        self::assertSame('suspended', $answer['verdict']->reason ?? null);
+    }
+
+    public function testASuspendedGrantAloneSaysOnlyWhatItSaidBefore(): void
+    {
+        $alone = StandingJudge::among([self::held('stopped', self::suspended())], Grants::call());
+        $judged = StandingJudge::judge(Grants::grant(['id' => 'stopped']), self::suspended(), Grants::call());
+
+        self::assertSame($judged->sentence, $alone['verdict']->sentence ?? null);
+        self::assertStringNotContainsString('Another grant', $judged->sentence);
+    }
+
+    public function testASuspendedGrantWhoseSignatureDoesNotHoldStillStopsTheCall(): void
+    {
+        $broken = new GrantStanding(GrantState::Suspended, 'stopped', signatureFault: 'the key that signed it no longer holds the word');
+        $answer = StandingJudge::among([self::held('stopped', $broken), self::held('would-lend')], Grants::call());
+
+        self::assertFalse($answer['verdict']->passes() ?? true);
+        self::assertSame(StandingCheck::Signature, $answer['verdict']->failed ?? null);
+        self::assertStringContainsString('lends nothing while «stopped» is suspended', $answer['verdict']->sentence ?? '');
+    }
+
+    public function testASuspendedGrantThatDoesNotNameTheCallStopsNothing(): void
+    {
+        $elsewhere = self::held('stopped', self::suspended(), ['covers' => [['operation' => 'lab:publish', 'arguments' => ['channel' => 'beta']]]]);
+        $answer = StandingJudge::among([$elsewhere, self::held('would-lend')], Grants::call());
+
+        self::assertTrue($answer['verdict']->passes() ?? false);
+        self::assertSame('would-lend', $answer['grant']->id ?? null);
+    }
+
+    public function testExpiredRevokedAndSupersededGrantsStopNobody(): void
+    {
+        $gone = [
+            self::held('revoked', new GrantStanding(GrantState::Revoked)),
+            self::held('superseded', new GrantStanding(GrantState::Superseded)),
+            self::held('expired', change: ['expires_at' => '2026-10-11T00:00:00Z']),
+        ];
+
+        $answer = StandingJudge::among([...$gone, self::held('would-lend')], Grants::call());
+        self::assertTrue($answer['verdict']->passes() ?? false);
+        self::assertSame('would-lend', $answer['grant']->id ?? null);
+
+        // And with nothing left that lends, they refuse — each as what it is, the later one speaking.
+        self::assertSame('expired', StandingJudge::among($gone, Grants::call())['verdict']->reason ?? null);
+    }
+
+    public function testWhenNoneLendsTheRefusalThatGotFurthestSpeaksWhicheverWasGivenFirst(): void
+    {
+        $unwatched = self::held('unwatched', Grants::standing(watcherSignalAt: null));
+        $unmeasured = self::held('unmeasured', Grants::standing([]));
+
+        foreach ([[$unwatched, $unmeasured], [$unmeasured, $unwatched]] as $grants) {
+            $answer = StandingJudge::among($grants, Grants::call());
+
+            self::assertSame('unmeasured', $answer['grant']->id ?? null, 'the one the caller can do something about');
+            self::assertSame(StandingCheck::Conditions, $answer['verdict']->failed ?? null);
+        }
+    }
+
+    public function testLevelWithAnotherTheLaterGrantSpeaks(): void
+    {
+        $answer = StandingJudge::among([self::held('older', new GrantStanding(GrantState::Superseded)), self::held('newer', change: ['expires_at' => '2026-10-11T00:00:00Z'])], Grants::call());
+
+        self::assertSame('newer', $answer['grant']->id ?? null);
+        self::assertSame('expired', $answer['verdict']->reason ?? null);
+    }
 }
