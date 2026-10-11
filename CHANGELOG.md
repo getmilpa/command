@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/getmilpa/command/compare/v0.29.2...v0.30.0) (2026-10-11)
+
+
+### Features
+
+* a standing grant, and the judgment of one call under it (greenhouse decisions/0615) ([#81](https://github.com/getmilpa/command/issues/81)) ([a7a87a9](https://github.com/getmilpa/command/commit/a7a87a9c153718a8870e6bc67f637d67eb45c20c))
+
 ## [0.29.2](https://github.com/getmilpa/command/compare/v0.29.1...v0.29.2) (2026-10-11)
 
 
