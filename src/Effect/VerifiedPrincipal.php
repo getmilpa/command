@@ -33,7 +33,7 @@ namespace Milpa\Command\Effect;
 final readonly class VerifiedPrincipal
 {
     /**
-     * @param string       $principal who, with its origin in front: `cli:rod@laptop`, `key:ABCD…`
+     * @param string       $principal who, with its origin in front: `cli:operator@example.com`, `key:ABCD…`
      * @param bool         $verified  whether a proof actually backs this — never asserted alone
      * @param string|null  $channel   the surface it arrived through
      * @param list<string> $scopes    what is verifiable, not what was asked for

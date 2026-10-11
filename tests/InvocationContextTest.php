@@ -33,12 +33,12 @@ final class InvocationContextTest extends TestCase
      */
     public function testATerminalBringsAnExecutorAndNoActor(): void
     {
-        $ctx = InvocationContext::cli('rod@laptop', 'req-1');
+        $ctx = InvocationContext::cli('operator@example.com', 'req-1');
 
         self::assertNull($ctx->actor);
         self::assertFalse($ctx->verified);
         self::assertSame('cli', $ctx->channel);
-        self::assertSame('rod@laptop', $ctx->executor);
+        self::assertSame('operator@example.com', $ctx->executor);
         self::assertSame('req-1', $ctx->correlationId);
         self::assertFalse($ctx->isAttributable(), 'y por eso no puede firmar nada que exija atribución');
     }
