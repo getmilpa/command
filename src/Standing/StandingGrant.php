@@ -290,7 +290,7 @@ final readonly class StandingGrant
         $expires = $data['expires_at'] ?? null;
         $expiresAt = \is_string($expires) ? date_create_immutable($expires) : null;
         if ($expires !== null && !$expiresAt instanceof \DateTimeImmutable) {
-            throw new \InvalidArgumentException("{$where} gives «expires_at» as a date and time, e.g. 2026-12-31T00:00:00Z");
+            throw new \InvalidArgumentException("{$where} gives «expires_at» as a date and time with its offset, in ISO 8601");
         }
 
         $supersedes = $data['supersedes'] ?? null;
