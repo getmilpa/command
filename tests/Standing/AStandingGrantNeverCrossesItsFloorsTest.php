@@ -100,8 +100,8 @@ final class AStandingGrantNeverCrossesItsFloorsTest extends TestCase
             ['name' => 'c', 'statement' => 't', 'by' => ['operation' => 'lab:build']],
         ]], 'each under its own name'];
         yield 'conditions not given as a list' => [['conditions' => ['c' => ['name' => 'c']]], 'gives «conditions» as a list'];
-        yield 'an expiry that is not a date' => [['expires_at' => 'next week, maybe'], 'gives «expires_at» as a date and time'];
-        yield 'an expiry that is not text' => [['expires_at' => 1790000000], 'gives «expires_at» as a date and time'];
+        yield 'an expiry that is not a date' => [['expires_at' => 'next week, maybe'], 'gives «expires_at» as a date and time with its offset, in ISO 8601'];
+        yield 'an expiry that is not text' => [['expires_at' => 1790000000], 'gives «expires_at» as a date and time with its offset, in ISO 8601'];
     }
 
     public function testTheValuesRefuseTheSameThingsWhenBuiltByHand(): void
