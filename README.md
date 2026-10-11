@@ -166,6 +166,89 @@ authorisation at every link of the chain: ask "remove the old plugin" and a samp
 with no fact saying why. With the contract declared, an unnamed target becomes a question instead.
 The doubt belongs to the operation that discovers a concrete operation cannot exist yet.
 
+## A standing grant, and the judgment of one call under it
+
+Some acts repeat, and a person should not have to sign each one. The only way to let a seat repeat
+an act used to be handing it the scope whole: no ceiling, no condition, nothing to take it back when
+the evidence changes. A **standing grant** is narrower than that on every count. A person signs it
+once; it names the seats, the operations, the widest effect a call may have, what must have been
+**measured on the very content the act touches**, and what would show the grant was wrong to give.
+
+An operation says what content a call acts on, as a digest derived from the bytes:
+
+```php
+new Operation(
+    name: 'release:publish',
+    // …
+    actsOn: static fn (array $arguments): ?string => is_file($arguments['archive'])
+        ? 'sha256:' . hash_file('sha256', $arguments['archive'])
+        : null,
+);
+```
+
+The operation that measures a condition declares the same thing, and a host joins the two **by
+content, never by clock**: a measurement taken on another candidate, or after the act, is not this
+one. `StandingJudge::judge()` then asks seven things, in order, and the first that fails is the
+verdict:
+
+| # | Check | Refuses when |
+|---|-------|--------------|
+| 1 | `Named` | the grant does not name this operation, these arguments and this seat — the call is then judged as it was before any grant existed |
+| 2 | `Signature` | the grant's signature does not hold *now* |
+| 3 | `InForce` | it is suspended, superseded, revoked, or past its own date |
+| 4 | `Watched` | the operation watching its falsifier gave no sign of life within its window |
+| 5 | `Subject` | the operation cannot say what content this call acts on |
+| 6 | `Ceiling` | the effect of this call is wider than the grant's ceiling (`EffectProfile::isNoWiderThan`, the one comparator) |
+| 7 | `Conditions` | a condition has no green receipt on this content, from the instrument as it is today |
+
+```php
+$verdict = StandingJudge::judge($grant, $standing, $call);
+
+$verdict->named();    // false: not this grant's call
+$verdict->passes();   // true: every check held; $verdict->cited are the receipts it ran on
+$verdict->failed;     // the StandingCheck that refused, with $verdict->sentence for the reader
+```
+
+The judgment is pure: it reads a `StandingGrant`, the facts a host gathered about it
+(`GrantStanding`) and the call as facts (`StandingCall`). It never grants, widens or restores —
+growing back is a person's new signature, and it happens in the host.
+
+A house may hold several grants that name the same call. `StandingJudge::among()` says which
+answer stands, and **shrinking wins**: a grant that names the call and is suspended refuses it,
+whatever another grant would lend — until a person lifts that suspension or gives a grant that
+supersedes it by name. Expired, revoked and superseded grants stop nobody. Otherwise one grant that
+passes is enough, and when none does, the refusal that got furthest speaks.
+
+Some documents cannot be written at all. `StandingGrant` refuses, at construction: a ceiling with an
+unclassified axis, a ceiling above `compensatable`, a ceiling whose **authority** is above
+`write_as_user` (an act above it itself gives authority, and no grant lends one), covering any
+`standing.*` operation, a grant with no condition, a falsifier nothing watches, and **any key it
+does not read** — a line the judge would ignore is a limit nobody keeps.
+
+A grant names calls in two ways, and the difference is deliberate. What it **covers** is matched
+openly: the call carries each fixed argument, and the rest is free — the candidate changes on every
+call. The operation that **measures** a condition and the one that **watches** the falsifier are
+matched closed (`NamedCall::matchesExactly()`): besides the fixed arguments a call may carry only
+those listed in `free`, typically the one that says which candidate. An open match fails open
+there — a later run with `--lenient` would speak for the condition.
+
+```json
+"conditions": [{"name": "no-host-names", "statement": "what is published names no machine",
+                "by": {"operation": "release:scan", "arguments": {"strict": true}, "free": ["archive"]}}]
+```
+
+A grant that supersedes a **suspended** one says which suspension it lifts (`lifts`, beside
+`supersedes`): taking a suspended grant out of the way is growing back, and growing back names what
+it lifts.
+
+**What it cannot say: money.** There is no effect axis for it, so no ceiling bounds what a call
+spends, and nothing in an operation's declaration says that it spends. "Do not grant over an
+operation that spends" is a rule for whoever signs, not something this package can hold.
+
+And one limit of the receipt: it pins the measuring operation by `Operation::instrumentDigest()` —
+its declaration and the body of its handler. A handler that delegates changes behaviour without
+changing that digest.
+
 ## Requirements
 
 - PHP **≥ 8.3**
