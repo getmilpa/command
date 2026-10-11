@@ -258,6 +258,28 @@ final readonly class StandingGrant
         ];
     }
 
+    /**
+     * The instant a text names when it is a date and time with its offset, in ISO 8601 — the date, a `T`, the time
+     * to the second, then `Z` or the offset as hours and minutes with its sign — and `null` for anything else.
+     *
+     * ONE FORM, AND NOTHING THE CLOCK OR THE MACHINE DECIDES (greenhouse decisions/0615, «Lo que la segunda revisión
+     * encontró», 6). A reader that takes whatever reads as a date takes «+1 hour»: a grant whose expiry is another
+     * instant at every reading, and so another grant than the one a person signed. It takes a day that does not exist
+     * and reads the days after it; a date with no offset and reads it in the zone of whichever process asks. A person
+     * who wrote any of those did not say when the grant ends — so it is refused, and they are told the form.
+     */
+    private static function instant(string $text): ?\DateTimeImmutable
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/D', $text) !== 1) {
+            return null;
+        }
+        $instant = \DateTimeImmutable::createFromFormat('Y-m-d\TH:i:sP', $text);
+
+        // A day, an hour or a second that does not exist is read by rolling over to one that does: what it reads
+        // back as is then not what was written.
+        return $instant !== false && $instant->format('Y-m-d\TH:i:s') === substr($text, 0, 19) ? $instant : null;
+    }
+
     /** The exact bytes that identify this grant — one spelling, whatever order its author wrote it in. */
     public function canonical(): string
     {
@@ -288,8 +310,8 @@ final readonly class StandingGrant
         Canonical::only($ceiling, ['mutation', 'externality', 'reversibility', 'authority', 'subject', 'rollback_contract'], "the ceiling of {$where}");
 
         $expires = $data['expires_at'] ?? null;
-        $expiresAt = \is_string($expires) ? date_create_immutable($expires) : null;
-        if ($expires !== null && !$expiresAt instanceof \DateTimeImmutable) {
+        $expiresAt = \is_string($expires) ? self::instant($expires) : null;
+        if ($expires !== null && $expiresAt === null) {
             throw new \InvalidArgumentException("{$where} gives «expires_at» as a date and time with its offset, in ISO 8601");
         }
 

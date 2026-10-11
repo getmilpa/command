@@ -102,6 +102,35 @@ final class AStandingGrantNeverCrossesItsFloorsTest extends TestCase
         yield 'conditions not given as a list' => [['conditions' => ['c' => ['name' => 'c']]], 'gives «conditions» as a list'];
         yield 'an expiry that is not a date' => [['expires_at' => 'next week, maybe'], 'gives «expires_at» as a date and time with its offset, in ISO 8601'];
         yield 'an expiry that is not text' => [['expires_at' => 1790000000], 'gives «expires_at» as a date and time with its offset, in ISO 8601'];
+
+        // ONE FORM, AND NOTHING THE CLOCK DECIDES (greenhouse decisions/0615, «Lo que la segunda revisión encontró», 6).
+        // A date that is read from the moment of reading is another date at the next reading, and so another grant
+        // than the one a person signed; a date that does not exist is silently another day.
+        foreach ([
+            'relative to now' => '+1 hour',
+            'a word for a day' => 'tomorrow',
+            'a phrase' => 'last day of december 2099',
+            'empty' => '',
+            'a date with no time' => '2026-10-12',
+            'a date and time with no offset' => '2026-12-31T00:00:00',
+            'a day that does not exist' => '2026-02-30T00:00:00Z',
+            'a month that does not exist' => '2026-13-01T00:00:00Z',
+            'an hour that does not exist' => '2026-12-31T25:00:00Z',
+            'a second that does not exist' => '2026-12-31T00:00:60Z',
+            'an offset that does not exist' => '2026-12-31T00:00:00+24:00',
+            'an offset of minutes that do not exist' => '2026-12-31T00:00:00+05:60',
+            'an offset with no colon' => '2026-12-31T00:00:00+0000',
+            'an offset of hours alone' => '2026-12-31T00:00:00-06',
+            'a zone by its name' => '2026-12-31T00:00:00 Europe/Madrid',
+            'a zone by its abbreviation' => '2026-12-31T00:00:00UTC',
+            'a fraction of a second' => '2026-12-31T00:00:00.5Z',
+            'lower case' => '2026-12-31t00:00:00z',
+            'a space for the T' => '2026-12-31 00:00:00Z',
+            'something after it' => "2026-12-31T00:00:00Z\n",
+            'something before it' => ' 2026-12-31T00:00:00Z',
+        ] as $what => $text) {
+            yield 'an expiry that is ' . $what => [['expires_at' => $text], 'gives «expires_at» as a date and time with its offset, in ISO 8601'];
+        }
     }
 
     public function testTheValuesRefuseTheSameThingsWhenBuiltByHand(): void
