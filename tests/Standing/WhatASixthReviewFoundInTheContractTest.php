@@ -158,8 +158,11 @@ final class WhatASixthReviewFoundInTheContractTest extends TestCase
             self::assertTrue(self::refused(['undo' => 'take it back' . mb_chr($point) . 'x']), \sprintf('accepted: «undo» carrying U+%04X %s', $point, $name));
             self::assertTrue(self::refused(['to' => [Grants::SEAT, Grants::SEAT . mb_chr($point)]]), \sprintf('accepted: two seats that differ by U+%04X %s', $point, $name));
         }
-        // Controls: their neighbours draw something, and are text.
-        foreach ([0x13440, 0x13443, 0x16FE3, 0x1D158, 0x1D15A] as $point) {
+        // Controls: characters of the same three scripts that draw something are text. Each is one Unicode has had
+        // for many versions: the first control written here was the hieroglyph next to the blanks, which is as new
+        // as they are — a PCRE with older tables has no such place yet, and refuses it for that (as the contract
+        // says a host with older tables does). The check ran on such a PCRE and said so.
+        foreach ([0x13000, 0x1342E, 0x16FE3, 0x1D158, 0x1D15A] as $point) {
             self::assertTrue(Canonical::oneLine('a' . mb_chr($point) . 'b'), \sprintf('U+%04X', $point));
         }
     }
