@@ -269,7 +269,7 @@ punctuation and symbols, and the ordinary space (U+0020) inside it. **What it re
 | the line and the paragraph separator | U+2028, U+2029 |
 | every space that is not U+0020 (`Zs`) | U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000 |
 | variation selectors, and the combining grapheme joiner | U+180B–U+180D, U+180F, U+FE00–U+FE0F, U+E0100–U+E01EF; U+034F |
-| fillers that print as nothing | U+115F, U+1160, U+3164, U+FFA0, U+2800 |
+| vowels and fillers that print as nothing | U+17B4, U+17B5 (the Khmer inherent vowels); U+115F, U+1160, U+3164, U+FFA0, U+2800 |
 | private use (`Co`), unassigned (`Cn`, the noncharacters and the rest of the tag block among them) | by category |
 | bytes that are not text | anything that is not UTF-8 — a surrogate among them |
 | a space at either end | U+0020 first or last |
@@ -278,9 +278,12 @@ What that costs: a no-break space, a soft hyphen, a zero-width joiner or non-joi
 selector are part of how some languages and some emoji are written, and a text that needs one is not
 taken. Which places are assigned, and which characters are format characters, is read from the
 Unicode tables of the PCRE the host runs — the lists above are those of Unicode 16; a host with older
-tables refuses a letter added since. And it is a list, not a promise that nothing unseen is left: the
-Khmer inherent vowels (U+17B4, U+17B5) are shown as nothing and are taken, and a letter of another
-alphabet that looks the same is text.
+tables refuses a letter added since.
+
+**The rule behind the list: no code point Unicode itself says is shown as nothing is taken** — its
+property `Default_Ignorable_Code_Point`. The table covers that whole set, and a test asks every code
+point there is. Of the 1,112,064, this reader refuses 957,522. What it does not promise is that two
+texts that look the same are one: a letter of another alphabet that looks the same is text.
 
 `fromArray()` reads a document already in an array, and cannot see a key said twice: the array holds
 the last one only.

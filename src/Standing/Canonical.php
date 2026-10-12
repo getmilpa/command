@@ -52,10 +52,14 @@ final class Canonical
      * What one line of plain text never carries ({@see self::oneLine()} lists it). By Unicode's general categories
      * where there is one — controls, format characters, private use, unassigned, the line and paragraph separators,
      * and every space but U+0020 — and by code point where there is none: the variation selectors, the combining
-     * grapheme joiner, and the fillers that print as nothing. A surrogate needs no place here: UTF-8 has no spelling
-     * for one, so it arrives as bytes that are not text, and those match nothing and are refused for that.
+     * grapheme joiner, and the vowels and fillers that print as nothing. A surrogate needs no place here: UTF-8 has
+     * no spelling for one, so it arrives as bytes that are not text, and those match nothing and are refused for that.
+     *
+     * Together they leave out NO code point Unicode calls `Default_Ignorable_Code_Point`. That property is the rule,
+     * and a test asks every code point there is for it. It is not written here as `\p{DI}` only because a PCRE older
+     * than 10.40 does not know that name, and a pattern that does not compile refuses every text there is.
      */
-    private const UNSEEN = '/[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\x{034F}\x{180B}-\x{180F}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}\x{115F}\x{1160}\x{3164}\x{FFA0}\x{2800}]|(?! )\p{Zs}/u';
+    private const UNSEEN = '/[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\x{034F}\x{180B}-\x{180F}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}\x{17B4}\x{17B5}\x{115F}\x{1160}\x{3164}\x{FFA0}\x{2800}]|(?! )\p{Zs}/u';
 
     /**
      * The canonical bytes of a structure.
@@ -266,7 +270,8 @@ final class Canonical
      *     U+3000;
      *   · a variation selector (U+180B–U+180D, U+180F, U+FE00–U+FE0F, U+E0100–U+E01EF) and the combining grapheme
      *     joiner (U+034F);
-     *   · a filler that prints as nothing: U+115F, U+1160, U+3164, U+FFA0, U+2800;
+     *   · a vowel or a filler that prints as nothing: U+17B4, U+17B5 (the Khmer inherent vowels), U+115F, U+1160,
+     *     U+3164, U+FFA0, U+2800;
      *   · a private-use character (Co), a place nothing is assigned to (Cn — the noncharacters and the rest of the
      *     tag block among them), and bytes that are not text at all — a surrogate among them, which UTF-8 does not
      *     spell;
@@ -281,9 +286,11 @@ final class Canonical
      * newer one takes — a letter added to Unicode since — and a document that uses none of those is read the same
      * everywhere.
      *
-     * WHAT THIS IS NOT: a promise that nothing unseen is left. It refuses what is listed. Two characters Unicode
-     * itself says are shown as nothing are not on the list and are taken — the Khmer inherent vowels, U+17B4 and
-     * U+17B5 — and a mark that stacks on a letter, or a letter of another alphabet that looks the same, is text.
+     * THE RULE BEHIND THE LIST: no code point Unicode itself says is shown as nothing — its property
+     * `Default_Ignorable_Code_Point` — is taken. The list above covers that whole set, and more.
+     *
+     * WHAT THIS IS NOT: a promise that two texts that look the same are one. A mark that stacks on a letter, or a
+     * letter of another alphabet that looks the same, is text.
      */
     public static function oneLine(string $text): bool
     {

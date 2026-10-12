@@ -653,6 +653,7 @@ final class WhatAFifthReviewFoundInTheContractTest extends TestCase
             'a combining grapheme joiner' => 0x034F, 'a mongolian free variation selector' => 0x180B, 'the third of them' => 0x180D, 'the fourth of them' => 0x180F,
             'a no-break space' => 0x00A0, 'an ogham space mark' => 0x1680, 'a mongolian vowel separator' => 0x180E, 'an en quad' => 0x2000, 'a hair space' => 0x200A,
             'a narrow no-break space' => 0x202F, 'a medium mathematical space' => 0x205F, 'an ideographic space' => 0x3000,
+            'a khmer inherent vowel' => 0x17B4, 'the other khmer inherent vowel' => 0x17B5,
             'a hangul choseong filler' => 0x115F, 'a hangul jungseong filler' => 0x1160, 'a hangul filler' => 0x3164, 'a halfwidth hangul filler' => 0xFFA0, 'a blank braille pattern' => 0x2800,
             'a private-use character' => 0xE000, 'a private-use character of plane 15' => 0xF0000, 'a noncharacter' => 0xFDD0, 'the last place of the first plane' => 0xFFFF, 'a place nothing is assigned to' => 0x0378,
             'a shorthand format control' => 0x1BCA0, 'a musical format control' => 0x1D173, 'an arabic number sign' => 0x0600,
@@ -679,6 +680,41 @@ final class WhatAFifthReviewFoundInTheContractTest extends TestCase
         foreach (['to' => [Grants::SEAT . $character], 'lifts' => 'sha256:ab' . $character . 'cd'] as $field => $value) {
             self::assertTrue(self::refused(['supersedes' => 'older', $field => $value]), "accepted: «{$field}» carrying " . \sprintf('U+%04X', $point));
         }
+    }
+
+    /**
+     * THE RULE, SAID BY THE PROPERTY AND NOT BY A LIST (decided by Rod, 2026-10-12): no code point Unicode itself
+     * says is shown as nothing — `Default_Ignorable_Code_Point` — is taken in a text a grant keeps.
+     *
+     * Asked of every code point there is, through the reader, with a second instrument: the Unicode tables of the
+     * PCRE this suite runs on. A character added to that set tomorrow turns this test red the day the tables know it.
+     */
+    public function testNoCodePointUnicodeSaysIsShownAsNothingIsTaken(): void
+    {
+        self::assertSame(0, @preg_match('/\p{DI}/u', 'a'), 'this PCRE does not know Default_Ignorable_Code_Point (it needs PCRE2 10.40): the rule cannot be asked here');
+        $every = '';
+        for ($point = 0; $point <= 0x10FFFF; ++$point) {
+            $every .= $point >= 0xD800 && $point <= 0xDFFF ? '' : mb_chr($point, 'UTF-8');
+        }
+        preg_match_all('/\p{DI}/u', $every, $found);
+        $ignorable = $found[0];
+        // Controls of the instrument: it sees the set, and the set is the one Unicode publishes — the soft hyphen,
+        // the zero-width space, a variation selector of the supplement and the reserved places of the tag block.
+        self::assertGreaterThan(4000, \count($ignorable));
+        foreach ([0x00AD, 0x200B, 0x17B4, 0x3164, 0xE0100, 0xE0FFF] as $known) {
+            self::assertContains(mb_chr($known, 'UTF-8'), $ignorable, \sprintf('U+%04X', $known));
+        }
+        self::assertNotContains('a', $ignorable);
+        self::assertNotContains(mb_chr(0x00E9, 'UTF-8'), $ignorable);
+
+        $taken = [];
+        foreach ($ignorable as $character) {
+            if (Canonical::oneLine('a' . $character . 'b')) {
+                $taken[] = \sprintf('U+%04X', mb_ord($character, 'UTF-8'));
+            }
+        }
+
+        self::assertSame([], $taken, 'shown as nothing, and taken in a text a grant keeps');
     }
 
     public function testWhatAPersonWritesInTheirOwnLanguageIsStillAGrant(): void
