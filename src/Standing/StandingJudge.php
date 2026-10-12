@@ -48,7 +48,19 @@ use Milpa\Command\Effect\EffectProfile;
  */
 final class StandingJudge
 {
-    /** The seven checks, in order; the first that fails is the verdict. */
+    /**
+     * The seven checks for ONE grant, in order; the first that fails is the verdict.
+     *
+     * IT DOES NOT ANSWER A STOP BESIDE THE CALL. This says whether THIS grant names the call as it is spelled, and
+     * what follows when it does. A stopped grant that only MAY be naming the call — the argument it fixes left
+     * out, or empty, or in another kind — is «not named» here, nobody's call. The refusal for that,
+     * `stopped_beside`, is {@see self::among()}'s: the one criterion that door adds, and this one does not ask.
+     *
+     * SO A HOST ASKS among() ALSO WHEN IT HOLDS ONE GRANT — and hands it every grant that lends to the seat and
+     * covers the operation, not only those that name the call. A host that asks this door alone, and lets «not
+     * named» go on to what the seat holds on its own, has let the seat walk around a stop by leaving one argument
+     * out. One that must ask here asks {@see self::mayBeNaming()} of the same grant too.
+     */
     public static function judge(StandingGrant $grant, GrantStanding $standing, StandingCall $call): StandingVerdict
     {
         $id = $grant->id;
@@ -207,21 +219,25 @@ final class StandingJudge
     /**
      * ONE CALL UNDER EVERY GRANT A HOST HOLDS: which answer stands — or `null` when none of them names the call.
      *
-     * Each grant is judged by {@see self::judge()}, alone; this only says how their answers combine, and it adds
-     * no criterion to any of them:
+     * Each grant is judged by {@see self::judge()}, alone, and this says how their answers combine. IT ADDS ONE
+     * CRITERION of its own, which `judge()` does not ask: the stop BESIDE the call (the third point below;
+     * decided by Rod, 2026-10-12). So this is the door a host asks, ALSO WITH ONE GRANT:
      *
      *   · A grant that names the call and is SUSPENDED refuses it, whatever another grant would lend. Shrinking
      *     wins (greenhouse decisions/0613 §4): a suspension that a second grant walks around is not a suspension.
      *     What takes a grant out of the way is a person's act that names it — lifting that suspension, or giving
-     *     a grant that supersedes it — and a host then no longer reports it as suspended. Expired, revoked and
-     *     superseded grants WHOSE RECORD READS are not suspended: they lend nothing and stop nobody.
+     *     a grant that supersedes it — and a host then no longer reports it as suspended. Revoked and superseded
+     *     grants WHOSE RECORD READS lend nothing and stop nobody; a grant past its own date stops nobody UNLESS IT
+     *     IS STILL SUSPENDED: where a grant stands is what the house's record says, and a date does not lift a stop.
      *   · A grant that names the call and WHOSE RECORD DOES NOT READ WHOLE ({@see GrantStanding::$recordFault})
      *     refuses it too, whatever another grant would lend: the line that cannot be read may be the one that
      *     stopped it, and a stop that cannot be read is not «no stop» — whatever state the grant is in, a dead
      *     one too. A suspension that reads speaks before it.
-     *   · PROPOSED, NOT DECIDED: a stopped grant that only MAY be naming the call ({@see self::mayBeNaming()})
+     *   · UNDER DOUBT, A STOP STOPS (decided by Rod, 2026-10-12): a stopped grant that only MAY be naming the call
+     *     ({@see self::mayBeNaming()})
      *     refuses it as well, `stopped_beside`, whether or not another grant would lend it. A stop that names the
-     *     call speaks before it.
+     *     call speaks before it. It is filed under the check of its kind, as the judge files a stop that names
+     *     the call: a record that does not read under the signature, a suspension that reads under «in force».
      *   · Otherwise one grant that passes is enough.
      *   · Otherwise the refusal that got furthest through the seven checks speaks — it is the one the caller is
      *     closest to — and, level with another, the later grant's.
@@ -236,8 +252,12 @@ final class StandingJudge
      * grant, and it is never `null`. A host that would rather refuse before it asks may; one that asks says it.
      *
      * @param list<array{grant: StandingGrant, standing: GrantStanding}> $grants      every grant the host holds that
-     *                                                                                may concern the call, in the
-     *                                                                                order they were given
+     *                                                                                lends to the seat and covers the
+     *                                                                                operation — NOT only those that
+     *                                                                                name the call: a stopped one that
+     *                                                                                may be naming it is heard here
+     *                                                                                and nowhere else —, in the order
+     *                                                                                they were given
      * @param string|null                                                $recordFault why the host's record of standing
      *                                                                                grants does not read whole, or
      *                                                                                `null`: every line and every
@@ -262,13 +282,12 @@ final class StandingJudge
         foreach ($grants as ['grant' => $grant, 'standing' => $standing]) {
             $verdict = self::judge($grant, $standing, $call);
             if (!$verdict->named()) {
-                // PROPOSED, NOT DECIDED (the seventh review, M1, as the eighth rebuilt it; greenhouse decisions/0615):
-                // UNDER DOUBT, A STOP STOPS. «The grant names the call» was made for LENDING, where being exact fails
+                // DECIDED BY ROD, 2026-10-12 (greenhouse decisions/0615, D10 — what a seventh review found, as the
+                // eighth rebuilt it): UNDER DOUBT, A STOP STOPS. «The grant names the call» was made for LENDING, where being exact fails
                 // closed. It also decided which calls a stop reaches, and there being exact fails open: a stopped
                 // grant fixes `channel` to "stable", and the seat calls with no `channel` at all — the operation's
                 // default —, with an empty one, with "stable " or with the number where the text is fixed, so the
-                // stopped grant «does not name» the call. To take the proposal out: this `if`, the one before the
-                // last `return`, and the two functions it calls.
+                // stopped grant «does not name» the call.
                 $unreadable = $standing->recordFault !== null || self::holdsALineNotRead($standing);
                 if ($beside === null && ($standing->state === GrantState::Suspended || $unreadable) && self::mayBeNaming($grant, $call)) {
                     $beside = ['grant' => $grant, 'suspended' => $standing->state === GrantState::Suspended, 'unreadable' => $unreadable];
@@ -321,13 +340,14 @@ final class StandingJudge
             )];
         }
 
-        // PROPOSED, NOT DECIDED (the seventh review, M1, as the eighth rebuilt it): a stop BESIDE the call — a
+        // DECIDED BY ROD, 2026-10-12 (D10): a stop BESIDE the call — a
         // stopped grant that may be the one that names it. It speaks whether or not another grant would lend the
         // call, so that a host can refuse on it where a seat holds the word on its own: with `null`, «nobody's
         // call», the seat walked around the stop by leaving out the argument it fixes. A stop that NAMES the call
         // spoke first, above and below. And the way out it names is the one that takes THIS stop away.
         if ($beside !== null && $suspended === null && $unread === null) {
-            return ['grant' => $beside['grant'], 'verdict' => StandingVerdict::refuse(StandingCheck::InForce, 'stopped_beside', \sprintf(
+            // Filed as the judge files the same stop when it NAMES the call: a record under the signature.
+            return ['grant' => $beside['grant'], 'verdict' => StandingVerdict::refuse($beside['unreadable'] ? StandingCheck::Signature : StandingCheck::InForce, 'stopped_beside', \sprintf(
                 'Standing grant «%1$s» %2$s, and it may be the one that names this call: it lends to this seat and covers `%3$s`, and the call does not say, beyond doubt, another value for what it fixes. Under doubt a stop stops: nothing is lent to this call until %4$s. Only a call that says another value for what «%1$s» fixes — of the same kind, spelled as a grant spells it — is certainly not its call.',
                 $beside['grant']->id,
                 match (true) {
@@ -358,7 +378,7 @@ final class StandingJudge
     }
 
     /**
-     * PROPOSED, NOT DECIDED (greenhouse decisions/0615): WHETHER A GRANT MAY BE THE ONE THAT NAMES THIS CALL, said
+     * DECIDED BY ROD, 2026-10-12 (greenhouse decisions/0615, D10): WHETHER A GRANT MAY BE THE ONE THAT NAMES THIS CALL, said
      * another way — it lends to the seat, it covers the operation, and the call does not say, beyond doubt, another
      * value for anything that entry fixes.
      *
@@ -377,7 +397,9 @@ final class StandingJudge
      * AND WHAT IT DOES NOT REACH, said so that nobody counts on it: an operation's OWN reading of a value. A call
      * that says `Stable` where a grant fixes `stable` says another value here; if the operation lower-cases what it
      * is given, it is the stopped act. A host owes the judge the arguments as the operation READS them
-     * ({@see StandingCall}).
+     * ({@see StandingCall}). IT WAS DECIDED WITH THAT LIMIT SAID: no rule that compares values closes it — a list in
+     * one text, a pattern, a flag given as a word, an argument the act does not turn on. Only a stop over the WHOLE
+     * operation would, and that was not taken: it also stops every call that is certainly another act.
      */
     public static function mayBeNaming(StandingGrant $grant, StandingCall $call): bool
     {
@@ -401,7 +423,7 @@ final class StandingJudge
     }
 
     /**
-     * PROPOSED, NOT DECIDED ({@see self::mayBeNaming()}): whether what a call carries for an argument is, BEYOND
+     * Decided by Rod, 2026-10-12 ({@see self::mayBeNaming()}): whether what a call carries for an argument is, BEYOND
      * DOUBT, another value than the one a grant fixes.
      *
      * THE RULE IS SAID FROM THE CLOSED SIDE. Only one thing says another value: a value OF THE SAME KIND as the fixed

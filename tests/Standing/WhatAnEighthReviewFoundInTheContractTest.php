@@ -27,9 +27,9 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * WHAT AN EIGHTH REVIEW FOUND IN THE CONTRACT (greenhouse decisions/0615) — its three findings of low severity that
- * are fixed. Its finding of medium severity is a proposal and has a file of its own
- * ({@see AProposalOfASeventhReviewTest}), and so has what it found in the proposal about escapes
- * ({@see TwoProposalsOfASixthReviewTest}).
+ * are fixed. Its finding of medium severity became a rule decided by Rod (D10) and has a file of its own
+ * ({@see AProposalOfASeventhReviewTest}), and so has what it found in the rule about escapes (D12,
+ * {@see TwoProposalsOfASixthReviewTest}).
  *
  * The reviewer's own tests are here as they were written, each beside what was added to it.
  *
@@ -135,7 +135,7 @@ final class WhatAnEighthReviewFoundInTheContractTest extends TestCase
         self::assertSame(['stopped', 'suspended'], [$two['grant']->id ?? null, $two['verdict']->reason ?? null]);
     }
 
-    /** «Expired, revoked and superseded grants whose record reads stop nobody» — and one whose record does not read stops. */
+    /** «Revoked and superseded grants whose record reads stop nobody» — and one whose record does not read stops. */
     public function testAGrantThatIsGoneStopsNobodyOnlyWhileItsRecordReads(): void
     {
         $call = Grants::call(arguments: ['path' => 'candidate.tar']);
@@ -148,7 +148,7 @@ final class WhatAnEighthReviewFoundInTheContractTest extends TestCase
             self::assertSame('stopped_beside', $unread['verdict']->reason ?? null, $gone->value . ', its record does not read: the line that cannot be read may be the one that stopped it');
         }
         $readme = (string) preg_replace('/\s+/', ' ', (string) file_get_contents(\dirname(__DIR__, 2) . '/README.md'));
-        self::assertStringContainsString('Expired, revoked and superseded grants whose record reads stop nobody', $readme);
+        self::assertStringContainsString('Revoked and superseded grants whose record reads stop nobody', $readme);
     }
 
     // ── L2 · a name is given as text, whatever the caller's file declares ────────────────────────────────────

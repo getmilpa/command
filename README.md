@@ -193,7 +193,7 @@ verdict:
 
 | # | Check | Refuses when |
 |---|-------|--------------|
-| 1 | `Named` | the grant does not name this operation, these arguments and this seat — the call is then judged as it was before any grant existed |
+| 1 | `Named` | the grant does not name this operation, these arguments and this seat — the call is then judged as it was before any grant existed. **`judge()` does not answer a stop beside the call**: see just below |
 | 2 | `Signature` | the grant's signature does not hold *now*, or what the host keeps of the grant does not read whole — its list of receipts holding something that is not a receipt among the ways — and a host that does not say it verified the one and read the other is read as one that did neither |
 | 3 | `InForce` | it is suspended, superseded, revoked, or past its own date |
 | 4 | `Watched` | the operation watching its falsifier gave no sign of life within its window |
@@ -208,6 +208,20 @@ $verdict->named();    // false: not this grant's call
 $verdict->passes();   // true: every check held; $verdict->cited are the receipts it ran on
 $verdict->failed;     // the StandingCheck that refused, with $verdict->sentence for the reader
 ```
+
+**A host asks `among()`, also when it holds one grant** — and hands it every grant that lends to the
+seat and covers the operation, not only those that name the call:
+
+```php
+$answer = StandingJudge::among([['grant' => $grant, 'standing' => $standing]], $call, $recordFault);
+```
+
+`judge()` answers for one grant and says whether *that grant names the call as it is spelled*. It
+does not ask the one criterion `among()` adds (decided by Rod, 2026-10-12): a **stopped** grant that only
+*may* be naming the call — the argument it fixes left out, or empty — is "not named" to `judge()`,
+and refused, `stopped_beside`, by `among()`. A host that asks `judge()` alone and lets "not named" go
+on to what the seat holds on its own has let the seat walk around a stop; one that must ask it asks
+`StandingJudge::mayBeNaming()` of the same grant too.
 
 The judgment is pure: it reads a `StandingGrant`, the facts a host gathered about it
 (`GrantStanding`) and the call as facts (`StandingCall`). It never grants, widens or restores —
@@ -224,9 +238,10 @@ whatever another grant would lend — until a person lifts that suspension or gi
 supersedes it by name. So does a grant that names the call and **whose record does not read whole**
 — the host said so (`recordFault`), or its list of receipts holds something that is not a receipt:
 the line that cannot be read may be the one that stopped it, and a stop that cannot be read is not
-"no stop" — whatever state that grant is in. Expired, revoked and superseded grants whose record
-reads stop nobody. Otherwise one grant that passes is enough, and when none does, the refusal that
-got furthest speaks.
+"no stop" — whatever state that grant is in. Revoked and superseded grants whose record reads stop
+nobody; a grant past its own date stops nobody unless it is still suspended — a date does not lift
+a stop, a person does. Otherwise one grant that passes is enough, and when none does, the refusal
+that got furthest speaks.
 
 **`among()` asks a third thing, and it has no default: whether everything the host keeps of standing
 grants reads.** A document a host kept and can no longer read is no grant it can hand in, and it may
@@ -234,14 +249,13 @@ be the one that names this call, stopped; so may a line it cannot attribute to o
 says `null` when its whole record reads and the reason when it does not — and then **nothing is lent
 to any seat**, whatever grants were handed in: the answer carries no grant, and it is never `null`.
 
-**Proposed, not decided** (the seventh review, M1, as the eighth rebuilt it): **under doubt, a stop
-stops.** "The grant names the call" was made for lending, where being exact fails closed. It also
+**Decided by Rod, 2026-10-12: under doubt, a stop stops.** "The grant names the call" was made for lending, where being exact fails closed. It also
 decided which calls a stop reaches, and there being exact fails open: a stopped grant fixes `channel`
 to `stable`, and the seat calls with no `channel` at all — the operation's default —, with an empty
 one, with `"stable "`, or with the number where the text is fixed. The stopped grant "does not name"
 that call, and a wider grant lent it — or nobody's grant did, and the seat's own word decided.
 
-With the proposal, a stopped grant (suspended, or its record not read whole) that lends to the seat
+So a stopped grant (suspended, or its record not read whole) that lends to the seat
 and covers the operation **refuses the call** (`stopped_beside`), whether or not another grant would
 lend it. Only one thing is outside it, and the rule is said from that side: **a call that says,
 beyond doubt, another value for something that entry fixes — a value of the same kind as the fixed
@@ -266,10 +280,16 @@ reader, and the word `"false"` is true to `if`.
   says `Stable` where `stable` is fixed, or the text `"07"` where the text `"7"` is, says another
   value; an operation that folds capitals or reads both as one number makes it the stopped act. A
   host hands the judge the arguments **as the operation reads them** — defaults filled in, texts as
-  it trims or folds them, types as declared (`StandingCall`).
+  it trims or folds them, types as declared (`StandingCall`). **It was decided with that limit
+  said**: no rule that compares values closes it — a list in one text, a pattern, a flag given as a
+  word, an argument the act does not turn on. Only a stop over the whole operation would, and that
+  was not taken: it also stops every call that is certainly another act.
 - **What it costs**: while a grant is stopped, a call over that operation by that seat is refused
-  unless it says each fixed argument in the grant's own kind and spelling — also where the
-  operation's default, or its reading of `"7"`, is certainly another value than the fixed one.
+  unless it says, in the grant's own kind and spelling, another value for one thing each of that
+  grant's entries over the operation fixes — also where the operation's default, or its reading of
+  `"7"`, is certainly another value than the fixed one.
+- **How it is filed**: under the check of its kind, as the judge files the same stop when it names
+  the call — `signature` for a record that does not read, `in_force` for a suspension that reads.
 
 Some documents cannot be written at all. `StandingGrant` refuses, at construction: a ceiling with an
 unclassified axis, a ceiling above `compensatable`, a ceiling whose **authority** is above
@@ -290,8 +310,7 @@ default mode an `OperationId` would turn itself into text before the constructor
 - it says each thing **once** — a key said twice in one object is refused, at every depth, however
   it is spelled (a reader of JSON would take the last one and never mention the first);
 - a list is written as a list — never as an object with the keys `"0"`, `"1"`;
-- **proposed, not decided** (the sixth review, L5, as the seventh and the eighth adjusted it): it
-  spells plainly **what names are made of** — a `\u` escape that names a letter, a digit, the colon,
+- **decided by Rod, 2026-10-12**: it spells plainly **what names are made of** — a `\u` escape that names a letter, a digit, the colon,
   the dot, the underscore, the dash or the space is refused. A text is read after its escapes are, so
   an operation written entirely in escapes was shown as escapes and read as its name. In a
   **sentence** — an undo, a statement — what a writer that is "safe for HTML" escapes is read: the
@@ -302,8 +321,8 @@ default mode an `OperationId` would turn itself into text before the constructor
   `<=`) was written whole in escapes, shown as noise and read as the value. *What that costs*: a
   writer that escapes the plus cannot write an expiry with a positive offset — it writes the same
   instant with `Z` —, and one that escapes `<`, `&` or the quote cannot fix an argument to a value
-  that holds one. The strict alternative, left for whoever decides: that second rule everywhere,
-  which costs the sentences of those writers;
+  that holds one. The strict alternative — that second rule everywhere — was not taken: it costs
+  the sentences of those writers;
 - it is **at most 256 KB long** (`StandingGrant::LONGEST`): a longer text is refused before a byte of
   it is read — a grant is a page a person reads before signing it. So is a text whose own
   **canonical spelling** would be longer (it says `supersedes`, `lifts` and `expires_at` also when
@@ -356,7 +375,7 @@ house runs on tables that know it. The fillers are not of that set, and are name
 1,112,064 code points, this reader refuses 957,526. What it does not promise is that two texts that
 look the same are one: a letter of another alphabet that looks the same is text.
 
-**Proposed, not decided** (the sixth review, L2): a text that **begins with a combining mark**, or
+**Decided by Rod, 2026-10-12**: a text that **begins with a combining mark**, or
 carries **more than eight of them in a row**, is refused too. Ordinary writing stacks few — two in
 Vietnamese, three in Thai, four or five in pointed Hebrew — and three hundred on one letter are
 drawn over the lines around it.

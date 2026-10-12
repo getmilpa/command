@@ -187,7 +187,7 @@ final class WhatASixthReviewFoundInTheContractTest extends TestCase
             }
             preg_match_all('/\p{DI}/u', $every, $ignorable);
             self::assertGreaterThan(4000, \count($ignorable[0]));
-            // Each asked BETWEEN two letters: alone, a mark would be refused for beginning the text (a proposal), and
+            // Each asked BETWEEN two letters: alone, a mark would be refused for beginning the text (D11), and
             // twelve mutants of this list went unnoticed behind that.
             $alone = $unseen->invoke(null, false);
             self::assertSame([], array_values(array_map(

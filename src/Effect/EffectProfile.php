@@ -55,6 +55,15 @@ use Milpa\Command\Standing\Canonical;
 final class EffectProfile
 {
     /**
+     * The rollback contract, when reversibility claims to be `Guaranteed`.
+     *
+     * Required for that one level and for no other, because `Guaranteed` is the only claim that
+     * buys the operation LESS scrutiny. A claim that lowers controls has to name the artifact
+     * that backs it, or it is exactly the self-certification GOV-00 exists to forbid.
+     */
+    public readonly ?string $rollbackContract;
+
+    /**
      * @param list<string> $escalatesOn argument names whose value can RAISE this ceiling — declared
      *                                  so a caller knows which unresolved argument is the one that
      *                                  keeps the profile pinned at its worst
@@ -74,13 +83,15 @@ final class EffectProfile
          */
         public readonly Subject $subject = Subject::Unknown,
         /**
-         * The rollback contract, when reversibility claims to be `Guaranteed`.
+         * The rollback contract ({@see self::$rollbackContract}): text, or `null`.
          *
-         * Required for that one level and for no other, because `Guaranteed` is the only claim that
-         * buys the operation LESS scrutiny. A claim that lowers controls has to name the artifact
-         * that backs it, or it is exactly the self-certification GOV-00 exists to forbid.
+         * THE TYPE IS ASKED HERE, NOT LEFT TO THE CALLER'S FILE (greenhouse decisions/0615, a ninth review).
+         * A standing grant holds the inverse its ceiling names to «the name of one operation, as it reads», and
+         * it reads it from here. From PHP's default mode an `OperationId` — it is `Stringable` — turned itself
+         * into text before this constructor looked: an identity built elsewhere, its ends already taken off.
+         * Anything but a text or `null` is a `TypeError` for every caller.
          */
-        public readonly ?string $rollbackContract = null,
+        mixed $rollbackContract = null,
         /**
          * Arguments that LOWER this ceiling for one call — the dangerous direction (decisions/0029).
          *
@@ -92,6 +103,11 @@ final class EffectProfile
          */
         public readonly array $descents = [],
     ) {
+        if ($rollbackContract !== null && !\is_string($rollbackContract)) {
+            throw new \TypeError(\sprintf('the rollback contract of an effect profile is given as text; got %s', get_debug_type($rollbackContract)));
+        }
+        $this->rollbackContract = $rollbackContract;
+
         // A READ HAS NO SUBJECT, AND SAYING OTHERWISE IS IMPOSSIBLE RATHER THAN MERELY WRONG.
         //
         // Four blind judges classified thirty-three operations from the definition alone, and every

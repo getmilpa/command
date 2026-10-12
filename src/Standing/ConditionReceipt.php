@@ -38,21 +38,35 @@ final readonly class ConditionReceipt
 {
     public OperationId $by;
 
+    /** What the run itself answered: true or false, and nothing that stands for one. */
+    public bool $ok;
+
     /**
      * @param mixed                $by        the operation that measured, by its name as TEXT, as it reads — never an
      *                                        identity built elsewhere, which has already had its ends taken off:
      *                                        anything but a text is a `TypeError`, whatever the caller's file declares
      * @param array<string, mixed> $arguments the arguments the measuring call carried
+     * @param mixed                $ok        what the run answered: `true` or `false`. THE TYPE IS ASKED HERE, NOT LEFT
+     *                                        TO THE CALLER'S FILE: from PHP's default mode a parameter typed `bool`
+     *                                        reads every text but "" and "0" as true — the word «false», «no»,
+     *                                        «failed» — before a constructor looks, and a no that was said would be
+     *                                        kept as a yes. Anything but a boolean is a `TypeError` for every caller
+     *
+     * @throws \TypeError when the operation is not given as text, or the answer is not a boolean
      */
     public function __construct(
         mixed $by,
         public array $arguments,
         public string $subject,
-        public bool $ok,
+        mixed $ok,
         public string $instrument,
         public ?string $who,
         public \DateTimeImmutable $at,
     ) {
+        if (!\is_bool($ok)) {
+            throw new \TypeError(\sprintf('what a run answered is given as true or false, never as a word or a number that stands for one; got %s', get_debug_type($ok)));
+        }
+        $this->ok = $ok;
         if (trim($subject) === '' || trim($instrument) === '') {
             throw new \InvalidArgumentException('a condition receipt is bound to the digest of what was measured and to the digest of what measured it; one without either binds nothing');
         }

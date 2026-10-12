@@ -52,8 +52,8 @@ final class WhatAThirdReviewFoundInTheContractTest extends TestCase
         yield 'the instrument of a condition' => [self::written('"by":{"operation":"lab:scan"', '"by":{"operation":"lab:soft","operation":"lab:scan"'), 'operation', ', inside "by"'];
         yield 'the watcher of its falsifier' => [self::written('"watcher":{"operation":"lab:watch"}', '"watcher":{"operation":"lab:watch"},"watcher":{"operation":"lab:blind"}'), 'watcher', ', inside "falsifier"'];
         // It was «to» with its first letter written as an escape. A plain letter written so is now refused for that
-        // (a proposal of the sixth review, not decided), so the two spellings are of a letter a writer does escape:
-        // the question — one key, spelled two ways, said twice — holds with that proposal and without it.
+        // (decided by Rod, 2026-10-12, D12), so the two spellings are of a letter a writer does escape: the question
+        // — one key, spelled two ways, said twice — is asked apart from that rule.
         yield 'a key spelled two ways' => ['{"ca\\u00f1a":1,"ca' . "\u{f1}" . 'a":2,' . substr($whole, 1), 'ca' . "\u{f1}" . 'a', ''];
         yield 'a key with a quote in it' => [substr($whole, 0, -1) . ',"a \\"b":1,"a \\"b":2}', 'a "b', ''];
     }

@@ -65,13 +65,13 @@ final class Canonical
     private const UNSEEN = '[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\x{034F}\x{180B}-\x{180F}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}\x{17B4}\x{17B5}\x{115F}\x{1160}\x{3164}\x{FFA0}\x{2800}\x{13441}\x{13442}\x{16FE4}\x{1D159}';
 
     /**
-     * PROPOSED, NOT DECIDED (the sixth review, L2; greenhouse decisions/0615): a text does not begin with a combining
-     * mark, and carries no more than eight of them in a row.
+     * DECIDED BY ROD, 2026-10-12 (greenhouse decisions/0615, D11 — what a sixth review found): a text does not begin
+     * with a combining mark, and carries no more than eight of them in a row.
      *
      * Every mark is text, in any number and anywhere: a letter under three hundred stacked marks is drawn over the
      * lines above and below it wherever glyphs are not clipped, and a mark with nothing before it sits on whatever a
      * host printed just before the text — its own label, its opening quote. Ordinary writing stacks few: Vietnamese
-     * two, Thai three, pointed Hebrew four or five. To take the proposal out: this constant, and where it is used.
+     * two, Thai three, pointed Hebrew four or five.
      */
     private const MARKS = '^\p{M}|\p{M}{9}';
 
@@ -119,13 +119,12 @@ final class Canonical
             $byte = $json[$at];
             if ($byte === '"') {
                 $from = $at;
-                // PROPOSED, NOT DECIDED (the sixth review, L5, as the seventh and the eighth adjusted it; greenhouse
-                // decisions/0615): what a person signs spells plainly what NAMES are made of — and, where the text is
+                // DECIDED BY ROD, 2026-10-12 (greenhouse decisions/0615, D12 — what a sixth review found, as the seventh
+                // and the eighth adjusted it): what a person signs spells plainly what NAMES are made of — and, where the text is
                 // not a sentence, EVERY character. A text is read after its escapes are, so `lab:` followed by seven
                 // `\u00..` groups was shown as escapes and read as `lab:publish`, with the digest of the plain text;
                 // and a value an argument is fixed to, `*` or `<=`, is made of the very characters a sentence is
-                // forgiven. To take the proposal out: `$valueOf`, this line, the `if` below, and
-                // {@see self::spellsWhatIsWrittenPlainly()}.
+                // forgiven.
                 $exact = \in_array($open[\count($open) - 1]['name'] ?? null, self::EXACT, true) || $valueOf === self::EXACTLY;
                 $valueOf = null;
                 for (++$at; $json[$at] !== '"'; ++$at) {
@@ -171,16 +170,16 @@ final class Canonical
     }
 
     /**
-     * PROPOSED, NOT DECIDED ({@see self::saidOnce()}): the frames whose texts are NOT SENTENCES — every text inside
+     * Decided by Rod, 2026-10-12 ({@see self::saidOnce()}): the frames whose texts are NOT SENTENCES — every text inside
      * `arguments` (the name of an argument and the value it is fixed to) and inside `to` (a seat).
      */
     private const EXACT = ['arguments', 'to'];
 
-    /** PROPOSED, NOT DECIDED ({@see self::saidOnce()}): the one key whose own text is not a sentence either. */
+    /** Decided by Rod, 2026-10-12 ({@see self::saidOnce()}): the one key whose own text is not a sentence either. */
     private const EXACTLY = 'expires_at';
 
     /**
-     * PROPOSED, NOT DECIDED ({@see self::saidOnce()}): whether four hexadecimal digits name a character this contract
+     * Decided by Rod, 2026-10-12 ({@see self::saidOnce()}): whether four hexadecimal digits name a character this contract
      * asks to be WRITTEN PLAINLY where it stands.
      *
      * IN A SENTENCE — an undo, a statement, a name — the characters NAMES ARE MADE OF: a letter, a digit, the colon,
@@ -197,10 +196,8 @@ final class Canonical
      * positive offset — it writes the same instant with `Z` —, and one that escapes `<`, `>`, `&`, the apostrophe or
      * the quote cannot fix an argument to a value that holds one, nor name a seat that does.
      *
-     * THE STRICT ALTERNATIVE, for whoever decides: the second rule everywhere — refuse the escape of every printable
-     * ASCII character but the quote and the backslash, 93 of them, in a sentence too. It is one line,
-     * `return $code >= 0x20 && $code <= 0x7E && $code !== 0x22 && $code !== 0x5C;`, and it costs the documents of
-     * those writers: a sentence with an apostrophe or an ampersand, written by one of them, is then not read.
+     * THE STRICT ALTERNATIVE WAS NOT TAKEN: the second rule everywhere, in a sentence too. It costs the documents of
+     * those writers — a sentence with an apostrophe or an ampersand, written by one of them, would not be read.
      */
     private static function spellsWhatIsWrittenPlainly(string $hex, bool $exact): bool
     {
@@ -355,8 +352,8 @@ final class Canonical
      *     spell;
      *   · and a SPACE AT EITHER END: a text is given as it reads, and nothing trims it.
      *
-     * PROPOSED, NOT DECIDED ({@see self::MARKS}): a text that begins with a combining mark, or carries more than
-     * eight of them in a row, is refused too.
+     * AND ({@see self::MARKS}; decided by Rod, 2026-10-12): a text that begins with a combining mark, or carries more
+     * than eight of them in a row, is refused too.
      *
      * WHAT THAT COSTS, and was accepted: a no-break space, a soft hyphen, a zero-width joiner or non-joiner and a
      * variation selector are part of how some languages and some emoji are written, and a text that needs one is

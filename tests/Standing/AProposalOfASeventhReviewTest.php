@@ -25,14 +25,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * A PROPOSAL OF THE SEVENTH REVIEW, REBUILT AS THE EIGHTH ASKED — BUILT, AND NOT DECIDED (greenhouse
- * decisions/0615): UNDER DOUBT, A STOP STOPS.
+ * UNDER DOUBT, A STOP STOPS — DECIDED BY ROD, 2026-10-12 (greenhouse decisions/0615, D10). It was a proposal of a
+ * seventh review, rebuilt as the eighth asked; this file keeps the name it had while it was one.
  *
  * A stopped grant — suspended, or its record not read whole — that lends to the seat and covers the operation refuses
  * the call, whether or not another grant would lend it, unless the call says BEYOND DOUBT another value for something
  * that entry fixes: a value of the same kind as the fixed one, written the way a grant can fix it, and different.
- * Everything else is doubt. It is a small change that can be taken out: this file, and the lines of `StandingJudge`
- * that carry its name.
+ * Everything else is doubt. Decided with its limit said: an operation's own reading of a value is not reached, and
+ * the alternative that would reach it — a stop over the whole operation — was not taken.
  *
  * The first test is the seventh reviewer's own, and the data of the third are the eighth's, as they were written.
  *
@@ -204,7 +204,8 @@ final class AProposalOfASeventhReviewTest extends TestCase
                 $answer = StandingJudge::among([['grant' => $first, 'standing' => $how], ['grant' => $second, 'standing' => $other]], $call, null);
 
                 self::assertFalse($answer['verdict']->passes() ?? true, 'the stopped grant may be the one that names this call, and the wide one lent it');
-                self::assertSame(['narrow', StandingCheck::InForce, 'stopped_beside'], [$answer['grant']->id ?? null, $answer['verdict']->failed, $answer['verdict']->reason]);
+                // Filed under the check of its kind (a ninth review, L2): a record that does not read is a fault of the record.
+                self::assertSame(['narrow', $said === 'is suspended' ? StandingCheck::InForce : StandingCheck::Signature, 'stopped_beside'], [$answer['grant']->id ?? null, $answer['verdict']->failed, $answer['verdict']->reason]);
                 self::assertStringContainsString("Standing grant «narrow» {$said}, and it may be the one that names this call: it lends to this seat and covers `lab:publish`", $answer['verdict']->sentence);
                 self::assertStringContainsString('does not say, beyond doubt, another value for what it fixes', $answer['verdict']->sentence);
             }
@@ -306,7 +307,7 @@ final class AProposalOfASeventhReviewTest extends TestCase
     }
 
     /**
-     * What a grant can fix an argument to, asked on its own: the proposal says «another value» only of one of these.
+     * What a grant can fix an argument to, asked on its own: the rule says «another value» only of one of these.
      *
      * @return iterable<string, array{mixed, bool}>
      */

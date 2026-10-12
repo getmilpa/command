@@ -27,7 +27,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * What a seventh independent review found in the contract of standing grants (greenhouse decisions/0615, «Lo que la
  * séptima revisión encontró»). The first test is the reviewer's own, moved here as it was written. Its finding of
- * medium severity is a question for whoever decides, built as a proposal in a file of its own.
+ * medium severity was a question for whoever decides, built as a proposal in a file of its own, and since decided.
  *
  * @subject-in milpa/command
  */

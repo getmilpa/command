@@ -23,11 +23,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * TWO PROPOSALS OF THE SIXTH REVIEW — BUILT, AND NOT DECIDED (greenhouse decisions/0615). Each is a small change that
- * can be taken out: this file, and the lines of `Canonical` that carry its name.
+ * TWO RULES DECIDED BY ROD, 2026-10-12 (greenhouse decisions/0615, D11 and D12). They were proposals of a sixth
+ * review; this file keeps the name it had while they were.
  *
- *   · L2 — a text does not begin with a combining mark, and carries no more than eight in a row.
- *   · L5, as the seventh and the eighth reviews adjusted it — the text a person signs spells plainly what NAMES
+ *   · D11 — a text does not begin with a combining mark, and carries no more than eight in a row.
+ *   · D12, as the seventh and the eighth reviews adjusted it — the text a person signs spells plainly what NAMES
  *     are made of (letters, digits, the colon, the dot, the underscore, the dash, the space), never as a `\u`
  *     escape. In a SENTENCE, what a writer that is «safe for HTML» escapes — the apostrophe, `<`, `>`, `&` — is
  *     read. Where the text is NOT a sentence — a seat, an expiry, the name of an argument and the value it is fixed
@@ -57,7 +57,7 @@ final class TwoProposalsOfASixthReviewTest extends TestCase
         return new GrantStanding(...$facts + ['state' => GrantState::InForce, 'signatureFault' => null, 'watcherSignalAt' => Grants::at('2026-10-11T11:50:00Z'), 'receipts' => [Grants::receipt()], 'instruments' => ['lab.scan' => Grants::INSTRUMENT], 'recordFault' => null]);
     }
 
-    // ── L2 (proposed) · a text is not a stack of marks, and does not begin with one ─────────────────────────
+    // ── D11 · a text is not a stack of marks, and does not begin with one ────────────────────────────────────
 
     public function testATextIsNotAStackOfMarksAndDoesNotBeginWithOne(): void
     {
@@ -107,7 +107,7 @@ final class TwoProposalsOfASixthReviewTest extends TestCase
         self::assertSame($grant->digest(), StandingGrant::fromJson($grant->canonical())->digest());
     }
 
-    // ── L5 (proposed) · what a person signs spells plain letters plainly ───────────────────────────────────
+    // ── D12 · what a person signs spells plain letters plainly ───────────────────────────────────────────────
 
     public function testWhatAPersonSignsSpellsPlainLettersPlainly(): void
     {
@@ -167,7 +167,7 @@ final class TwoProposalsOfASixthReviewTest extends TestCase
 
     public function testWhatAWriterThatIsSafeForHtmlWritesIsRead(): void
     {
-        // The sentence this proposal carried said «no writer makes one». Writers do: PHP's own, asked to be safe for
+        // The sentence this rule carried while it was a proposal said «no writer makes one». Writers do: PHP's own, asked to be safe for
         // HTML, and others by default. Their documents are read, and are the grant the plain text is.
         $document = Grants::document(['undo' => "don't publish <it> & stop"]);
         $plain = StandingGrant::fromJson((string) json_encode($document, \JSON_UNESCAPED_SLASHES));
