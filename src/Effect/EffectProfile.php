@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Milpa\Command\Effect;
 
 use Milpa\Command\Consent\OperationId;
+use Milpa\Command\Standing\Canonical;
 
 /**
  * What an operation can do at WORST — the upper bound, declared by the operation itself.
@@ -151,12 +152,12 @@ final class EffectProfile
         // one profile, and it is asked where the table exists.
         if ($reversibility === Reversibility::Guaranteed && !self::namesAnOperation((string) $rollbackContract)) {
             throw new \InvalidArgumentException(\sprintf(
-                'the rollback contract «%s» describes an inverse instead of naming one: reversibility '
+                'the rollback contract %s describes an inverse instead of naming one: reversibility '
                 . '«guaranteed» must name the operation that undoes this (e.g. «plugins.disable»), '
                 . 'because prose cannot be run, cannot be checked, and cannot be put through a gate. '
                 . 'An operation whose inverse is not an operation is not guaranteed — declare what it '
                 . 'really is.',
-                $rollbackContract,
+                Canonical::shown($rollbackContract),
             ));
         }
     }
@@ -391,8 +392,8 @@ final class EffectProfile
         foreach (array_keys($axes) as $key) {
             if (!\in_array($key, $known, true)) {
                 throw new \InvalidArgumentException(sprintf(
-                    '«%s» is not an effect axis (%s): changing it is a new proposal, not a tightening — use a counter',
-                    (string) $key,
+                    '%s is not an effect axis (%s): changing it is a new proposal, not a tightening — use a counter',
+                    Canonical::shown((string) $key),
                     implode(', ', $known),
                 ));
             }
@@ -405,7 +406,7 @@ final class EffectProfile
             $raw = $axes[$axis];
             $case = \is_string($raw) ? $enum::tryFrom($raw) : null;
             if ($case === null) {
-                throw new \InvalidArgumentException(sprintf('%s is not a level of %s', json_encode($raw) ?: get_debug_type($raw), $axis));
+                throw new \InvalidArgumentException(sprintf('%s is not a level of %s', Canonical::shown($raw), $axis));
             }
 
             return $case;
@@ -456,7 +457,7 @@ final class EffectProfile
             $raw = $data[$key] ?? null;
             $case = \is_string($raw) ? $enum::tryFrom($raw) : null;
             if ($case === null) {
-                throw new \InvalidArgumentException(sprintf('a stored profile needs a valid «%s»; got %s', $key, json_encode($raw) ?: get_debug_type($raw)));
+                throw new \InvalidArgumentException(sprintf('a stored profile needs a valid «%s»; got %s', $key, Canonical::shown($raw)));
             }
 
             return $case;

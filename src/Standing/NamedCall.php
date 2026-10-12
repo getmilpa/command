@@ -34,6 +34,17 @@ use Milpa\Command\Consent\OperationId;
  *     read this way, because an open match fails open there: a later run with an argument nobody
  *     described — `--lenient`, `--skip=…` — would speak for the condition, and a green one would
  *     cover a red one (greenhouse decisions/0615, «Lo que la revisión encontró», 5).
+ *
+ * WHAT AN ARGUMENT IS FIXED TO (decided by Rod, 2026-10-12). A value that is text is VISIBLE ASCII and nothing
+ * else — the characters from `!` to `~`, single spaces inside it, none around it. A fixed value is compared byte
+ * by byte with what a caller sends, so a value that reads «strict» and is «strict» with a zero-width space after
+ * it is another run: the run a person read may have said no, and the look-alike said yes. What that costs, and was
+ * accepted: an argument cannot be fixed to a value with an accent, an ñ, or a letter of another alphabet. A value
+ * that is not text — a whole number, true or false — is as it always was.
+ *
+ * AND WHAT A HOST OWES IT: a host that lists a grant, or asks a person to sign one, shows it to whoever signs
+ * through {@see Canonical::shown()} — the value as it is spelled, in quotes, so that nothing and one space are
+ * never the same line on a screen.
  */
 final readonly class NamedCall
 {
@@ -48,6 +59,12 @@ final readonly class NamedCall
      * argument named `sha256` can be fixed.
      */
     private const ARGUMENT = '/^[A-Za-z][A-Za-z0-9_]{0,63}$/D';
+
+    /** The text an argument is fixed to: visible ASCII, single spaces inside, none around — or nothing at all. */
+    private const VALUE = '/^(?:[\x21-\x7E]+(?: [\x21-\x7E]+)*)?$/D';
+
+    /** The identity of one operation: segments of lowercase letters and digits, a dash inside a segment, dots between. */
+    private const OPERATION = '/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/D';
 
     public OperationId $operation;
 
@@ -64,8 +81,8 @@ final readonly class NamedCall
      */
     public function __construct(OperationId|string $operation, array $arguments = [], array $free = [])
     {
-        $id = $operation instanceof OperationId ? $operation : new OperationId($operation);
-        if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/D', $id->canonical) !== 1) {
+        $id = self::named($operation);
+        if ($id === null) {
             throw new \InvalidArgumentException(\sprintf(
                 '%s does not name one operation. A standing grant names each operation whole — no pattern, no wildcard: what is not named is not covered.',
                 Canonical::shown($operation instanceof OperationId ? $operation->canonical : $operation),
@@ -77,12 +94,17 @@ final readonly class NamedCall
             if (!\is_string($name) || preg_match(self::ARGUMENT, $name) !== 1 || !(\is_string($value) || \is_int($value) || \is_bool($value))) {
                 throw new \InvalidArgumentException(\sprintf(
                     'an argument fixed for «%s» is a name — letters, digits and underscores, starting with a letter — and one plain value: text, a whole number, or true/false; got %s',
-                    $id->canonical,
+                    Canonical::short($id->canonical),
                     Canonical::shown([$name => $value]),
                 ));
             }
-            if (\is_string($value) && !Canonical::oneLine($value)) {
-                throw new \InvalidArgumentException(Canonical::notOneLine("the argument «{$name}» fixed for «{$id->canonical}» gives its value", $value));
+            if (\is_string($value) && preg_match(self::VALUE, $value) !== 1) {
+                throw new \InvalidArgumentException(\sprintf(
+                    'the argument «%s» fixed for «%s» is fixed to text a person can read and no other — visible ASCII, single spaces inside, none around: a call is compared with it byte by byte; got %s',
+                    $name,
+                    Canonical::short($id->canonical),
+                    Canonical::shown($value),
+                ));
             }
             $fixed[$name] = $value;
         }
@@ -93,7 +115,7 @@ final readonly class NamedCall
             if (!\is_string($name) || preg_match(self::ARGUMENT, $name) !== 1 || \array_key_exists($name, $fixed)) {
                 throw new \InvalidArgumentException(\sprintf(
                     '«free» of «%s» lists the names of the arguments a call may carry with any value — each in letters, digits and underscores, starting with a letter, and never one it already fixes; got %s',
-                    $id->canonical,
+                    Canonical::short($id->canonical),
                     Canonical::shown($name),
                 ));
             }
@@ -105,6 +127,26 @@ final readonly class NamedCall
         $this->operation = $id;
         $this->arguments = $fixed;
         $this->free = $open;
+    }
+
+    /**
+     * The one operation a text names — or `null` when it names none.
+     *
+     * A name is given as it reads, with nothing before or after it. The identity of an operation is forgiving about
+     * HOW a surface spells it — `lab:scan`, `lab.scan`, `lab_scan`, in capitals or not — and that forgiveness used
+     * to reach what stood at either end: a space, a line break, a tab or a null byte, and a separator too
+     * (`:lab:scan:`), each taken off before anything looked. Nothing is taken off here: a spelling names an
+     * operation when its identity is that same spelling, separator for separator — and an identity is lowercase
+     * letters, digits, dashes and dots, so nothing else is in it either.
+     */
+    public static function named(OperationId|string $operation): ?OperationId
+    {
+        $id = $operation instanceof OperationId ? $operation : new OperationId($operation);
+        if (\is_string($operation) && str_replace([':', '_'], '.', strtolower($operation)) !== $id->canonical) {
+            return null;
+        }
+
+        return preg_match(self::OPERATION, $id->canonical) === 1 ? $id : null;
     }
 
     /**

@@ -27,7 +27,10 @@ enum StandingCheck: string
     /** Does the grant name this operation, these arguments and this seat? If not, it is not this grant's call. */
     case Named = 'named';
 
-    /** Does the grant's signature hold NOW — bytes unaltered, the signer still entitled to give it? */
+    /**
+     * Does the grant's signature hold NOW — bytes unaltered, the signer still entitled to give it — and does what
+     * the host keeps of the grant read whole? Both ask whether what is about to be judged can be believed at all.
+     */
     case Signature = 'signature';
 
     /** Is it in force — not suspended, superseded, revoked, or past its own date? */

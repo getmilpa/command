@@ -51,6 +51,9 @@ final readonly class ConditionReceipt
         if (trim($subject) === '' || trim($instrument) === '') {
             throw new \InvalidArgumentException('a condition receipt is bound to the digest of what was measured and to the digest of what measured it; one without either binds nothing');
         }
+        if (NamedCall::named($by) === null) {
+            throw new \InvalidArgumentException('a condition receipt says which operation measured, by its name; got ' . Canonical::shown($by->canonical));
+        }
     }
 
     /**
@@ -81,8 +84,13 @@ final readonly class ConditionReceipt
      * so a red one that stops reading as a receipt leaves the green before it speaking. A host that kept a
      * line as a receipt and gets `null` for it here — because this reader, or its own writer, changed since
      * — treats that line as it treats a grant it can no longer read ({@see StandingGrant::fromJson()}): it
-     * is a FAULT of its record, never «nothing was measured». The `at` of a receipt is for the reader of the
-     * record and is read loosely; the judge joins by content, not by clock.
+     * is a FAULT of its record, never «nothing was measured», and it says so to the judge in
+     * {@see GrantStanding::$recordFault} — which the judge refuses on, and which a host that says nothing is
+     * read as not having checked. The `at` of a receipt is for the reader of the record and is read loosely; the
+     * judge joins by content, not by clock.
+     *
+     * A line whose `by` does not name one operation is not a receipt: it would be matched against no condition and
+     * no instrument, and a red one kept that way stops speaking.
      *
      * @param array<array-key, mixed> $data
      */
@@ -94,8 +102,12 @@ final readonly class ConditionReceipt
             || trim($data['subject']) === '' || trim($data['instrument']) === '') {
             return null;
         }
+        $by = NamedCall::named($data['by']);
+        if ($by === null) {
+            return null;
+        }
         $who = $data['who'] ?? null;
 
-        return new self(new OperationId($data['by']), $data['arguments'], $data['subject'], $data['ok'], $data['instrument'], \is_string($who) ? $who : null, $at);
+        return new self($by, $data['arguments'], $data['subject'], $data['ok'], $data['instrument'], \is_string($who) ? $who : null, $at);
     }
 }

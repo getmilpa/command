@@ -81,10 +81,10 @@ final readonly class DeclaredAuthorityPolicy implements AuthorityPolicy
         $reglas = [];
         foreach ($this->rules as $operacion => $regla) {
             $scopes = $regla['scopes'];
-            sort($scopes);
+            sort($scopes, \SORT_STRING);
             $reglas[$operacion] = ['authority' => $regla['authority']->value, 'scopes' => $scopes];
         }
-        ksort($reglas);
+        ksort($reglas, \SORT_STRING);
 
         return 'sha256:' . hash('sha256', (string) json_encode(['id' => $this->id, 'rules' => $reglas]));
     }

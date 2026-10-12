@@ -87,6 +87,15 @@ final readonly class StandingGrant
 
     private const KEYS = ['id', 'supersedes', 'lifts', 'to', 'covers', 'ceiling', 'conditions', 'undo', 'falsifier', 'expires_at'];
 
+    /**
+     * The longest text read as a standing grant, in bytes (256 KB).
+     *
+     * A grant is a page a person reads before signing it. A text a thousand times that long is not one, and reading
+     * it is work whoever wrote it chose for the reader: keys picked to land in one bucket of PHP's own table held
+     * this reader for twenty seconds at 2.4 MB. So a longer text is refused before a byte of it is looked at.
+     */
+    public const LONGEST = 262_144;
+
     /** @var list<string> */
     public array $to;
 
@@ -152,19 +161,25 @@ final readonly class StandingGrant
                 throw new \InvalidArgumentException("standing grant «{$id}» covers named calls, one by one");
             }
             if ($act->free !== []) {
-                throw new \InvalidArgumentException("standing grant «{$id}» gives «free» for «{$act->operation->canonical}» in «covers», where nothing reads it: a covered act already leaves free every argument it does not fix");
+                $named = Canonical::short($act->operation->canonical);
+                throw new \InvalidArgumentException("standing grant «{$id}» gives «free» for «{$named}» in «covers», where nothing reads it: a covered act already leaves free every argument it does not fix");
             }
             if ($act->operation->canonical === 'standing' || str_starts_with($act->operation->canonical, 'standing.')) {
                 throw new \InvalidArgumentException(\sprintf(
                     'standing grant «%s» cannot cover «%s»: nothing a grant lends may give, restore, withdraw or stop a grant. Those stay acts of a person, or of anyone who only narrows.',
                     $id,
-                    $act->operation->canonical,
+                    Canonical::short($act->operation->canonical),
                 ));
             }
         }
 
         if (!$ceiling->isFullyClassified()) {
             throw new \InvalidArgumentException("standing grant «{$id}» leaves an axis of its ceiling unclassified, and an unclassified ceiling admits everything: classify mutation, externality, reversibility, authority and subject");
+        }
+        // The inverse a ceiling names is the name of ONE operation, as it reads — under any ceiling, not only one
+        // that says «guaranteed»: a sentence there is a line nothing can run, check or put through a gate.
+        if ($ceiling->rollbackContract !== null && NamedCall::named($ceiling->rollbackContract) === null) {
+            throw new \InvalidArgumentException("standing grant «{$id}» gives the inverse its ceiling names («rollback_contract») as the name of one operation, as it reads — or does not give it; got " . Canonical::shown($ceiling->rollbackContract));
         }
         if ($ceiling->reversibility->weight() > self::CEILING_REVERSIBILITY->weight()) {
             throw new \InvalidArgumentException(\sprintf(
@@ -200,6 +215,11 @@ final readonly class StandingGrant
         }
         if (!Canonical::oneLine($undo)) {
             throw new \InvalidArgumentException(Canonical::notOneLine("standing grant «{$id}» gives «undo»", $undo));
+        }
+        // A grant built by hand ends at an instant its own spelling says: to the second, in a year of four digits.
+        // Built with half a second more, it lent for half a second after the document it writes said it had ended.
+        if ($expiresAt !== null && ($expiresAt->format('u') !== '000000' || self::instant($expiresAt->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z')) === null)) {
+            throw new \InvalidArgumentException("standing grant «{$id}» expires at an instant its own spelling can say: to the whole second, in a year of four digits");
         }
 
         $this->to = $seats;
@@ -383,16 +403,21 @@ final readonly class StandingGrant
      * documents and reads them again with a later contract cannot tell the two apart here. So such a host treats a
      * document it kept and can no longer read as a FAULT of its record — never as a grant that is not there, which
      * would bring back whatever that grant had replaced or stopped.
+     *
+     * A text longer than {@see self::LONGEST} bytes is refused before it is read.
      */
     public static function fromJson(string $json): self
     {
+        if (\strlen($json) > self::LONGEST) {
+            throw new \InvalidArgumentException(\sprintf('a text of %d bytes is longer than a standing grant is: at most %d are read — a grant is a page a person reads before signing it', \strlen($json), self::LONGEST));
+        }
         $data = json_decode($json, true);
         if (!\is_array($data) || array_is_list($data)) {
             throw new \InvalidArgumentException('a standing grant is one JSON object: {"id", "to", "covers", "ceiling", "conditions", "undo", "falsifier"}');
         }
+        // One reading of the text says both what an array no longer can: a key said twice, and a list written as an
+        // object — read into an array, `{"0": …, "1": …}` is one.
         Canonical::saidOnce($json, 'a standing grant');
-        // The shape of a list is decided from the text: read into an array, `{"0": …, "1": …}` is one.
-        Canonical::listsAreLists(json_decode($json), 'a standing grant');
 
         return self::fromArray($data);
     }
@@ -425,7 +450,7 @@ final readonly class StandingGrant
             }
         }
         $inverse = $written['rollback_contract'] ?? null;
-        if ($inverse !== null && (!\is_string($inverse) || trim($inverse) === '')) {
+        if ($inverse !== null && !\is_string($inverse)) {
             throw new \InvalidArgumentException("{$where} gives «rollback_contract» of its ceiling as the name of the one operation that undoes, in words — or does not give it; got " . Canonical::shown($inverse));
         }
         if ($inverse !== null && !Canonical::oneLine($inverse)) {

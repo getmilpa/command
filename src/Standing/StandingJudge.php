@@ -56,13 +56,22 @@ final class StandingJudge
         if ($act === null) {
             return StandingVerdict::refuse(StandingCheck::Named, 'not_named', "Standing grant «{$id}» does not name this call.");
         }
-        $operation = $call->operation->forCli();
+        $operation = Canonical::short($call->operation->forCli());
 
         if ($standing->signatureFault !== null) {
             return StandingVerdict::refuse(StandingCheck::Signature, 'signature', \sprintf(
                 'Standing grant «%s» names this call and is not honoured: %s. Nothing is lent under it. A person gives it again with a new signature; no seat can.',
                 $id,
-                $standing->signatureFault,
+                Canonical::said($standing->signatureFault),
+            ));
+        }
+        // What the host keeps of this grant is asked with the signature, before any of it is read: a receipt, a
+        // sign of the watcher or a stop that can no longer be read is not «none» — the line may be the one that says no.
+        if ($standing->recordFault !== null) {
+            return StandingVerdict::refuse(StandingCheck::Signature, 'record_unread', \sprintf(
+                'Standing grant «%s» names this call and is not honoured: what the house keeps of it does not read whole — %s. Nothing is lent under it until its record reads again; a line that cannot be read is never read as «nothing happened».',
+                $id,
+                Canonical::said($standing->recordFault),
             ));
         }
 
@@ -71,7 +80,7 @@ final class StandingJudge
                 'Standing grant «%s» is %s%s. %s',
                 $id,
                 $standing->state->value,
-                $standing->because === null ? '' : ' — ' . $standing->because,
+                $standing->because === null ? '' : ' — ' . Canonical::said($standing->because),
                 $standing->state === GrantState::Suspended
                     ? 'While it is, every act it covers is the person\'s again, this one included: a person lifts it with a new signature that names this suspension. No seat can, and neither can the house.'
                     : 'It lends nothing, and nothing brings it back: a person gives a new grant.',
@@ -85,24 +94,24 @@ final class StandingJudge
             ));
         }
 
-        $watcher = $grant->falsifier->watcher->operation->forCli();
+        $watcher = Canonical::short($grant->falsifier->watcher->operation->forCli());
         $signal = $standing->watcherSignalAt;
         if ($signal === null) {
             return StandingVerdict::refuse(StandingCheck::Watched, 'never_watched', \sprintf(
-                'Standing grant «%s» is not being watched: `%s`, which watches its falsifier «%s», has given no sign of life since the grant was given or last restored. No sign is not green. Run `%s`.',
+                'Standing grant «%s» is not being watched: `%s`, which watches its falsifier %s, has given no sign of life since the grant was given or last restored. No sign is not green. Run `%s`.',
                 $id,
                 $watcher,
-                $grant->falsifier->name,
+                Canonical::shown($grant->falsifier->name),
                 $watcher,
             ));
         }
         $age = $call->at->getTimestamp() - $signal->getTimestamp();
         if ($age < 0 || $age > $grant->falsifier->withinSeconds) {
             return StandingVerdict::refuse(StandingCheck::Watched, 'watcher_quiet', \sprintf(
-                'Standing grant «%s» is not being watched: `%s`, which watches its falsifier «%s», last gave a sign of life at %s, and the grant asks for one within %d seconds. A watcher that went quiet is not green. Run `%s`.',
+                'Standing grant «%s» is not being watched: `%s`, which watches its falsifier %s, last gave a sign of life at %s, and the grant asks for one within %d seconds. A watcher that went quiet is not green. Run `%s`.',
                 $id,
                 $watcher,
-                $grant->falsifier->name,
+                Canonical::shown($grant->falsifier->name),
                 $signal->format(\DATE_ATOM),
                 $grant->falsifier->withinSeconds,
                 $watcher,
@@ -128,42 +137,44 @@ final class StandingJudge
 
         $cited = [];
         foreach ($grant->conditions as $condition) {
-            $measuring = $condition->by->operation->forCli();
+            $measuring = Canonical::short($condition->by->operation->forCli());
             $last = null;
-            // WHAT SPEAKS FOR A CONDITION IS READ CLOSED, AND WHAT SPEAKS AGAINST IT IS READ OPEN. A green receipt
-            // counts only from the run the condition describes — a lenient run that says yes measured something else.
-            // A red one from a run that carries those arguments AND one more is the instrument saying no of this very
-            // content: read closed, it was ignored, and the green before it went on speaking.
+            // WHAT SPEAKS FOR A CONDITION IS READ CLOSED, AND A «NO» COUNTS FROM ANY RUN (decided by Rod, 2026-10-12).
+            // A green receipt counts only from the run the condition describes — a lenient run that says yes measured
+            // something else. A red one is that instrument saying no of this very content, whatever arguments the run
+            // carried: one more, the fixed one missing or at another value, or none at all. It stops the act until
+            // the content is measured again by the run the condition describes. Another content, or another
+            // operation, says nothing of this condition.
             foreach ($standing->receipts as $receipt) {
                 if ($receipt->subject === $call->subject
-                    && ($condition->by->matchesExactly($receipt->by, $receipt->arguments) || (!$receipt->ok && $condition->by->matches($receipt->by, $receipt->arguments)))) {
+                    && ($condition->by->matchesExactly($receipt->by, $receipt->arguments) || (!$receipt->ok && $condition->by->operation->is($receipt->by)))) {
                     $last = $receipt;
                 }
             }
             if ($last === null) {
                 return StandingVerdict::refuse(StandingCheck::Conditions, 'not_measured', \sprintf(
-                    'Standing grant «%s» lends nothing to this call: condition «%s» was never measured on this candidate (%s). Run `%s` on it first — a measurement taken on another candidate, or after the act, is not this one.',
+                    'Standing grant «%s» lends nothing to this call: condition %s was never measured on this candidate (%s). Run `%s` on it first — a measurement taken on another candidate, or after the act, is not this one.',
                     $id,
-                    $condition->name,
-                    $call->subject,
+                    Canonical::shown($condition->name),
+                    Canonical::shown($call->subject),
                     $measuring,
                 ));
             }
             if (($standing->instruments[$last->by->canonical] ?? null) !== $last->instrument) {
                 return StandingVerdict::refuse(StandingCheck::Conditions, 'instrument_changed', \sprintf(
-                    'Standing grant «%s» lends nothing to this call: condition «%s» was measured on this candidate by `%s` as it was then, and it is not that instrument any more. What the old one found does not hold for the new one. Run `%s` again.',
+                    'Standing grant «%s» lends nothing to this call: condition %s was measured on this candidate by `%s` as it was then, and it is not that instrument any more. What the old one found does not hold for the new one. Run `%s` again.',
                     $id,
-                    $condition->name,
+                    Canonical::shown($condition->name),
                     $measuring,
                     $measuring,
                 ));
             }
             if (!$last->ok) {
                 return StandingVerdict::refuse(StandingCheck::Conditions, 'measured_red', \sprintf(
-                    'Standing grant «%s» lends nothing to this call: condition «%s» does not hold on this candidate (%s) — `%s` measured it and said no.',
+                    'Standing grant «%s» lends nothing to this call: condition %s does not hold on this candidate (%s) — `%s` measured it and said no.',
                     $id,
-                    $condition->name,
-                    $call->subject,
+                    Canonical::shown($condition->name),
+                    Canonical::shown($call->subject),
                     $measuring,
                 ));
             }
@@ -174,7 +185,7 @@ final class StandingJudge
             'Standing grant «%s» covers this call: %d condition(s) measured green on %s, its effect under the ceiling, its falsifier watched.',
             $id,
             \count($cited),
-            $call->subject,
+            Canonical::shown($call->subject),
         ), $cited);
     }
 

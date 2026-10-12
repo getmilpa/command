@@ -13,6 +13,7 @@ use Milpa\Command\Effect\Reversibility;
 use Milpa\Command\Effect\Subject;
 use Milpa\Command\Standing\ConditionReceipt;
 use Milpa\Command\Standing\GrantStanding;
+use Milpa\Command\Standing\GrantState;
 use Milpa\Command\Standing\StandingCall;
 use Milpa\Command\Standing\StandingGrant;
 
@@ -101,10 +102,12 @@ final class Grants
     public static function standing(?array $receipts = null, ?string $watcherSignalAt = '2026-10-11T11:50:00Z'): GrantStanding
     {
         return new GrantStanding(
+            GrantState::InForce,
             signatureFault: null,
             watcherSignalAt: $watcherSignalAt === null ? null : self::at($watcherSignalAt),
             receipts: $receipts ?? [self::receipt()],
             instruments: ['lab.scan' => self::INSTRUMENT],
+            recordFault: null,
         );
     }
 }

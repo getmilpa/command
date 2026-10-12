@@ -22,6 +22,7 @@ use Milpa\Command\Effect\Reversibility;
 use Milpa\Command\Standing\Canonical;
 use Milpa\Command\Standing\ConditionReceipt;
 use Milpa\Command\Standing\GrantStanding;
+use Milpa\Command\Standing\GrantState;
 use Milpa\Command\Standing\NamedCall;
 use Milpa\Command\Standing\StandingCheck;
 use Milpa\Command\Standing\StandingGrant;
@@ -102,7 +103,17 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
                 self::assertStringContainsString('does not name one operation', $refused->getMessage());
             }
         }
-        self::assertSame('lab.scan', (new NamedCall(" lab:scan\n"))->operation->canonical, 'control: what is blank around a name was never part of it');
+        // What is blank around a name WAS taken off it, and this test pinned that. It is refused now (the fifth
+        // review, L1): a name is given as it reads. What stays is that a surface's spelling is one identity.
+        foreach ([" lab:scan\n", "lab:scan\n", ' lab:scan', "lab:scan\0"] as $name) {
+            try {
+                new NamedCall($name);
+                self::fail('a named call took ' . json_encode($name));
+            } catch (\InvalidArgumentException $refused) {
+                self::assertStringContainsString('does not name one operation', $refused->getMessage());
+            }
+        }
+        self::assertSame('lab.scan', (new NamedCall('lab:scan'))->operation->canonical, 'control: a name as a surface spells it');
     }
 
     /** The third place the same pattern stands: the operation a ceiling names as its inverse. */
@@ -251,6 +262,8 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
     {
         // It was accepted, and its canonical form — the instant in UTC — was a text the reader refuses.
         self::assertTrue(self::refused(['expires_at' => $written]), 'accepted: ' . $written);
+        // …and whoever wrote it is told the form, by the reader: not that a grant built in code ends badly.
+        self::assertStringContainsString('gives «expires_at» as a date and time with its offset, in ISO 8601', (string) self::refusal((string) json_encode(Grants::document(['expires_at' => $written]))));
     }
 
     public function testAnExpiryTheReaderTakesIsOneItReadsBackFromItsOwnSpelling(): void
@@ -354,15 +367,19 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
     public function testARefusalSaysBackWhatWasWrittenBoundedAndWithNothingATerminalObeys(\Closure $document): void
     {
         // What makes a terminal clear its line, go back to its start, and hide what follows — then a sentence of the
-        // drafter's own, a right-to-left override, and 300 000 bytes more. And the same length in plain words: a text
-        // that is one line and is still not to be said back whole.
-        $forged = "\x1b[2K\rOK: standing grant «release-line» is in force.\x1b[8m\u{202E}" . str_repeat('x', 300_000);
-        $plain = 'release ' . str_repeat('x', 300_000);
+        // drafter's own, a right-to-left override, and 100 000 bytes more. And the same length in plain words: a text
+        // that is one line and is still not to be said back whole. (It was 300 000 bytes; a text that long is now
+        // refused for its length before any of this is looked at, and this test would have gone on passing for
+        // that reason alone — six mutants said so. So the document stays under the longest a grant is.)
+        $forged = "\x1b[2K\rOK: standing grant «release-line» is in force.\x1b[8m\u{202E}" . str_repeat('x', 100_000);
+        $plain = 'release ' . str_repeat('x', 100_000);
 
         foreach ([$forged, $plain] as $said) {
+            self::assertLessThan(StandingGrant::LONGEST, \strlen($document($said)), 'control: the document is one a grant may be as long as');
             $refusal = self::refusal($document($said));
 
             self::assertNotNull($refusal, 'control: the document is refused');
+            self::assertStringNotContainsString('is longer than a standing grant is', $refusal, 'control: and not for its length');
             self::assertSame(0, preg_match('/[^\x20-\x7E«»—…]/u', $refusal), 'the refusal carries a byte a terminal obeys, or a character that reorders what is read');
             self::assertLessThan(1200, \strlen($refusal), 'the refusal is as long as what the drafter wrote');
             self::assertStringNotContainsString("\rOK: standing grant", $refusal);
@@ -491,7 +508,8 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
         try {
             $grant = StandingGrant::fromJson($document);
         } catch (\InvalidArgumentException $refused) {
-            self::assertStringContainsString('one line of plain text', $refused->getMessage());
+            // A value an argument is fixed to is held to less than a sentence is: visible ASCII (D8).
+            self::assertStringContainsString(str_starts_with($field, 'the value of an argument') ? 'text a person can read and no other' : 'one line of plain text', $refused->getMessage());
             self::assertSame(0, preg_match('/[^\x20-\x7E«»—…]/u', $refused->getMessage()), 'the refusal itself says it back raw');
 
             return;
@@ -514,15 +532,15 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
 
     public function testTextThatIsOnlyTextIsStillTaken(): void
     {
-        // Controls: what a person writes in any language, with the marks and the spaces a sentence has — and what is
-        // blank AROUND a text, which was never part of it.
+        // Controls: what a person writes in any language, with the marks and the spaces a sentence has. Two things
+        // this test pinned as TAKEN are refused now, by decision (2026-10-12): a no-break space, a soft hyphen and a
+        // zero-width joiner — what is not seen — and what is blank around a text, which a reader no longer takes off.
         $legitimate = [
             'retirar la versión y publicar la anterior — «sin excepción»',
             'ce qui est publié ne nomme aucune machine ; jamais',
             "\u{5e7}\u{5d5}\u{5d1}\u{5e5} release \u{5d0}\u{5d7}\u{5d3}", // letters written right to left, with no control that turns them
             "\u{0645}\u{0644}\u{0641} release",
             "\u{767a}\u{884c}\u{3092}\u{53d6}\u{308a}\u{6d88}\u{3059}",
-            "a no-break\u{a0}space, a soft\u{ad}hyphen and a zero-width\u{200d}joiner",
             'tabs are words: "tab", and so is \\n — written out, not typed',
         ];
         foreach ($legitimate as $text) {
@@ -530,7 +548,8 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
             self::assertSame($text, $grant->undo);
             self::assertSame($text, $grant->conditions[0]->statement);
         }
-        self::assertSame('take it back', Grants::grant(['undo' => "  take it back\n"])->undo, 'what is blank around a text was never part of it');
+        self::assertTrue(self::refused(['undo' => "a no-break\u{a0}space, a soft\u{ad}hyphen and a zero-width\u{200d}joiner"]), 'what is not seen is not taken');
+        self::assertTrue(self::refused(['undo' => "  take it back\n"]), 'what is blank around a text is not taken off it: the text is refused');
     }
 
     public function testTheValuesRefuseTheSameTextWhenBuiltByHand(): void
@@ -550,7 +569,8 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
                     $build($text);
                     self::fail("{$what} took " . json_encode($text, \JSON_INVALID_UTF8_SUBSTITUTE));
                 } catch (\InvalidArgumentException $refused) {
-                    self::assertStringContainsString('one line of plain text', $refused->getMessage(), $what);
+                    // A value an argument is fixed to is held to less than a sentence is: visible ASCII (D8).
+                    self::assertStringContainsString($what === 'a named call by the value of an argument' ? 'text a person can read and no other' : 'one line of plain text', $refused->getMessage(), $what);
                 }
             }
             self::assertIsObject($build('plain words'), $what);
@@ -591,10 +611,11 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
         self::assertSame('measured_red', StandingJudge::judge(Grants::grant(), Grants::standing([$red, $lenient]), Grants::call())->reason);
     }
 
-    public function testARedReceiptSpeaksOnlyForTheConditionItsRunFitsAndTheContentItMeasured(): void
+    public function testARedReceiptSpeaksForItsInstrumentAndTheContentItMeasured(): void
     {
-        // Open is not «anything»: another content, another operation, or another value of an argument the condition
-        // FIXES is not this condition measured red.
+        // Another content, or another operation, is not this condition measured red. Another value of an argument
+        // the condition FIXES was not either, and this test pinned that; it is now (decided 2026-10-12, «a red one
+        // counts from any run»): that instrument said no of this very content.
         $fixed = ['conditions' => [['name' => 'no-host-names', 'statement' => 's', 'by' => ['operation' => 'lab:scan', 'arguments' => ['mode' => 'strict'], 'free' => ['path']]]]];
         $green = Grants::receipt(arguments: ['path' => 'candidate.tar', 'mode' => 'strict']);
         $passes = static fn (array $receipts): bool => StandingJudge::judge(Grants::grant($fixed), Grants::standing($receipts), Grants::call())->passes();
@@ -602,7 +623,7 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
         self::assertTrue($passes([$green]), 'control');
         self::assertTrue($passes([$green, Grants::receipt(subject: 'sha256:another', ok: false, arguments: ['path' => 'candidate.tar', 'mode' => 'strict'])]), 'a red one about other content');
         self::assertTrue($passes([$green, Grants::receipt(ok: false, by: 'lab:other', arguments: ['path' => 'candidate.tar', 'mode' => 'strict'])]), 'a red one by another operation');
-        self::assertTrue($passes([$green, Grants::receipt(ok: false, arguments: ['path' => 'candidate.tar', 'mode' => 'loose'])]), 'a red one from a run in another mode than the one the condition fixes');
+        self::assertFalse($passes([$green, Grants::receipt(ok: false, arguments: ['path' => 'candidate.tar', 'mode' => 'loose'])]), 'a red one from a run in another mode than the one the condition fixes');
         self::assertFalse($passes([$green, Grants::receipt(ok: false, arguments: ['path' => 'candidate.tar', 'mode' => 'strict', 'deep' => true])]));
     }
 
@@ -664,9 +685,10 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
 
     public function testAHostThatSaysNothingOfTheSignatureIsNotReadAsHavingVerifiedIt(): void
     {
-        $verdict = StandingJudge::judge(Grants::grant(), new GrantStanding(), Grants::call());
+        $verdict = StandingJudge::judge(Grants::grant(), new GrantStanding(GrantState::InForce), Grants::call());
 
-        self::assertSame(StandingCheck::Signature, $verdict->failed, 'the default of «is its signature verified» was yes');
+        self::assertSame([StandingCheck::Signature, 'signature'], [$verdict->failed, $verdict->reason], 'the default of «is its signature verified» was yes');
+        self::assertStringContainsString(GrantStanding::NOT_VERIFIED, $verdict->sentence);
         // …and one that says it verified it, says so.
         self::assertTrue(StandingJudge::judge(Grants::grant(), Grants::standing(), Grants::call())->passes(), 'control');
     }

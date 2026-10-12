@@ -42,6 +42,21 @@ namespace Milpa\Command\Standing;
  */
 final class Canonical
 {
+    /** How many bytes of what a drafter wrote a refusal says back, spelled out ({@see self::shown()}). */
+    private const SHOWN = 96;
+
+    /** How many characters of a host's own sentence a verdict repeats ({@see self::said()}). */
+    private const SAID = 480;
+
+    /**
+     * What one line of plain text never carries ({@see self::oneLine()} lists it). By Unicode's general categories
+     * where there is one — controls, format characters, private use, unassigned, the line and paragraph separators,
+     * and every space but U+0020 — and by code point where there is none: the variation selectors, the combining
+     * grapheme joiner, and the fillers that print as nothing. A surrogate needs no place here: UTF-8 has no spelling
+     * for one, so it arrives as bytes that are not text, and those match nothing and are refused for that.
+     */
+    private const UNSEEN = '/[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\x{034F}\x{180B}-\x{180F}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}\x{115F}\x{1160}\x{3164}\x{FFA0}\x{2800}]|(?! )\p{Zs}/u';
+
     /**
      * The canonical bytes of a structure.
      *
@@ -53,25 +68,32 @@ final class Canonical
     }
 
     /**
-     * Refuse a JSON text that says a key twice in one object.
+     * Refuse a JSON text that says a key twice in one object — or that writes a list as an object.
      *
      * A reader of JSON takes the last one and says nothing of the first: the text a person is shown and the
      * document the judge reads are then not the same, and whoever drafts it chooses which the person sees. A
      * document a person signs says each thing once — at every depth, and however a key is spelled.
+     *
+     * AND A LIST IS WRITTEN AS A LIST. An object whose keys are "0", "1", "2"… in that order IS a list once it is
+     * read into an array: a second spelling of the same document, with the same digest, in a contract that asks for
+     * one. Which of the two was written can only be told from the text, and this scan is the one reading of the
+     * text there is — so it is told here, and nothing decodes the text a second time to ask.
      *
      * It answers for any text. One that does not parse — or that is nested deeper than a document is read — is
      * refused before a key is looked at: the scan below walks a text it can trust to be closed, and it used to walk
      * one it could not, and never came back. And it costs what the text is long: a frame is asked for its name, never
      * kept by a second hand, which copied every key an object had said each time one more was read.
      *
-     * @throws \InvalidArgumentException naming the key, and the object it is said twice in — or saying the text is not JSON
+     * @throws \InvalidArgumentException naming the key, and the object it is said twice in; naming where the list
+     *                                   is; or saying the text is not JSON
      */
     public static function saidOnce(string $json, string $where): void
     {
         if (!json_validate($json)) {
             throw new \InvalidArgumentException($where . ' is not JSON this contract reads: it does not parse, or it is nested deeper than a document is read');
         }
-        // One frame per object or list that is open: the keys an object has said, and the name it is known by.
+        // One frame per object or list that is open: the keys an object has said, the name it is known by, and
+        // whether its keys so far are the places of a list — "0", then "1", then "2".
         $open = [];
         $text = null;
         for ($at = 0, $length = \strlen($json); $at < $length; ++$at) {
@@ -94,13 +116,18 @@ final class Canonical
                         $open[$frame]['name'] === null ? '' : ', inside ' . self::shown($open[$frame]['name']),
                     ));
                 }
+                $open[$frame]['places'] = $open[$frame]['places'] && $key === (string) \count($open[$frame]['said']);
                 $open[$frame]['said']['«' . $key] = true;
                 $open[$frame]['last'] = $key;
             } elseif ($byte === '{' || $byte === '[') {
                 $last = \count($open) - 1;
-                $open[] = ['said' => [], 'last' => null, 'name' => $last < 0 ? null : ($open[$last]['last'] ?? $open[$last]['name'])];
+                $open[] = ['said' => [], 'places' => true, 'last' => null, 'name' => $last < 0 ? null : ($open[$last]['last'] ?? $open[$last]['name'])];
             } elseif ($byte === '}' || $byte === ']') {
-                array_pop($open);
+                $closed = array_pop($open);
+                // Only an object says keys, so only an object can have said the places of a list.
+                if ($closed['said'] !== [] && $closed['places']) {
+                    throw new \InvalidArgumentException(\sprintf('%s writes a list as an object with the keys "0", "1"…%s: a list is written as a list', $where, $closed['name'] === null ? '' : ', in ' . self::shown($closed['name'])));
+                }
             }
         }
     }
@@ -112,41 +139,56 @@ final class Canonical
      * A refusal is read by a person, often at a terminal, and what it quotes was written by whoever drafted the
      * document — who may not be that person. Said back raw, a key or an id can clear the line it is printed on and
      * leave «OK: … is in force» in its place, or run for three hundred thousand bytes. So nothing a terminal obeys
-     * and no character that reorders what is read is ever said back as it came: every one is written as its escape.
+     * and no character that reorders what is read is ever said back as it came: every one is written as its escape
+     * — every letter that is not plain ASCII too, so that nothing said back can pass for this contract's own «…».
+     * And the line it is cut to ends where a character ends: half an escape reads as something else.
      */
     public static function shown(mixed $written): string
     {
         // Whatever cannot be spelled is spelled in part: this is asked of what a document held, never refused. JSON
         // writes every control character as its escape but one — DEL — so that one is written as its escape here.
         $spelled = str_replace("\x7f", '\u007f', (string) json_encode($written, \JSON_INVALID_UTF8_SUBSTITUTE | \JSON_PARTIAL_OUTPUT_ON_ERROR | \JSON_UNESCAPED_SLASHES));
+        if (\strlen($spelled) <= self::SHOWN) {
+            return $spelled;
+        }
+        // The longest run of WHOLE characters within the line: a backslash alone, or `\u00`, is left out.
+        preg_match('/^(?:\\\\u[0-9a-f]{4}|\\\\[^u]|[^\\\\])*/', substr($spelled, 0, self::SHOWN), $whole);
 
-        return \strlen($spelled) <= 96 ? $spelled : substr($spelled, 0, 96) . '… (' . \strlen($spelled) . ' bytes as written)';
+        return $whole[0] . '… (' . \strlen($spelled) . ' bytes as written)';
     }
 
     /**
-     * Refuse a JSON text that writes a list as an object whose keys are "0", "1", "2"…
+     * A name this contract already holds to plain characters — the identity of an operation — the way a sentence says
+     * it: whole when it is at most a line, and the start of it with its length when it is longer.
      *
-     * Read into an array, such an object IS a list: a second spelling of the same document, with the same digest,
-     * in a contract that asks for one. Which of the two was written can only be told from the text, so it is told
-     * here, from the text as it parses.
-     *
-     * @param mixed $read the text, decoded with objects kept as objects
-     *
-     * @throws \InvalidArgumentException naming where the list is
+     * Such a name needs no escape: its own pattern leaves nothing in it to obey. It has no length of its own though —
+     * a hundred thousand letters are one name — and every sentence that said «run `…`» repeated them all.
      */
-    public static function listsAreLists(mixed $read, string $where, ?string $name = null): void
+    public static function short(string $plain): string
     {
-        if (\is_object($read)) {
-            $keys = array_keys(get_object_vars($read));
-            if ($keys !== [] && array_map(strval(...), $keys) === array_map(strval(...), array_keys($keys))) {
-                throw new \InvalidArgumentException(\sprintf('%s writes a list as an object with the keys "0", "1"…%s: a list is written as a list', $where, $name === null ? '' : ', in ' . self::shown($name)));
-            }
+        return \strlen($plain) <= self::SHOWN ? $plain : substr($plain, 0, self::SHOWN) . '… (' . \strlen($plain) . ' bytes as written)';
+    }
+
+    /**
+     * A sentence a HOST hands the judge — why a grant is stopped, why its signature does not hold — the way a
+     * verdict repeats it: as it came when it is one line of plain text, and at most {@see self::SAID} characters of
+     * it; spelled out by {@see self::shown()} when it is anything else.
+     *
+     * A reason is what a person reads to know what to do next, and it names things they have to cite — the digest
+     * of a suspension, the key that left: cut to the line `shown()` allows and written in escapes, it would no
+     * longer say them. So a sentence that is plain is repeated plain. What it never does is reach a terminal with a
+     * byte the terminal obeys, or run for as long as whoever wrote it chose.
+     */
+    public static function said(string $sentence): string
+    {
+        if (!self::oneLine($sentence)) {
+            return self::shown($sentence);
         }
-        if (\is_object($read) || \is_array($read)) {
-            foreach ((array) $read as $key => $item) {
-                self::listsAreLists($item, $where, \is_object($read) ? (string) $key : $name);
-            }
+        if (preg_match('/^.{' . self::SAID . '}(?=.)/us', $sentence, $start) !== 1) {
+            return $sentence;
         }
+
+        return $start[0] . '… (' . \strlen($sentence) . ' bytes as written)';
     }
 
     /**
@@ -174,7 +216,12 @@ final class Canonical
     }
 
     /**
-     * A required, non-blank string of a document, trimmed — and one line of plain text ({@see self::oneLine()}).
+     * A required, non-blank string of a document, AS IT WAS WRITTEN — and one line of plain text
+     * ({@see self::oneLine()}).
+     *
+     * Nothing is taken off its ends. A reader that trims a text repairs it: the document a person signed and the
+     * one that is kept are then two, and what was trimmed — a line break, a tab, a null byte — was written by
+     * someone. A text that is not as it reads is refused, and whoever drafted it writes it again.
      *
      * @param array<array-key, mixed> $data
      */
@@ -184,38 +231,69 @@ final class Canonical
         if (!\is_string($value) || trim($value) === '') {
             throw new \InvalidArgumentException(\sprintf('%s needs «%s», in words', $where, $key));
         }
-        if (!self::oneLine(trim($value))) {
+        if (!self::oneLine($value)) {
             throw new \InvalidArgumentException(self::notOneLine("{$where} gives «{$key}»", $value));
         }
 
-        return trim($value);
+        return $value;
     }
 
     /**
-     * Whether a text is ONE LINE OF PLAIN TEXT: read as it is written (decided by Rod, 2026-10-12).
+     * Whether a text is ONE LINE OF PLAIN TEXT: read as it is written, with nothing in it that is not seen
+     * (decided by Rod, 2026-10-12).
      *
      * A grant is read by a person before they sign it, and again every time a house lists it or a judge names it in
-     * a refusal. A text that carried a line break, a tab, an escape or any other control character — or one of the
-     * characters that turn or isolate the direction text is read in, or a line or paragraph separator — would be
-     * read otherwise than its bytes: a condition's name could clear the line a terminal printed it on and leave «OK»
-     * in its place. So every text a grant keeps is refused when it is read if it carries one:
+     * a refusal. A text that carried a line break, an escape, a character that turns the direction text is read in —
+     * or one that is not shown at all — would be read otherwise than its bytes: a condition's name could clear the
+     * line a terminal printed it on and leave «OK» in its place, and two names that read the same could be two.
      *
-     *   · the C0 controls, DEL and the C1 controls (U+0000–U+001F, U+007F–U+009F);
-     *   · the direction controls (U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069);
+     * WHAT IS KEPT: the letters of every language, their accents, digits, punctuation and symbols — and the ordinary
+     * space (U+0020), as many as the sentence has, inside it.
+     *
+     * WHAT IS REFUSED, exactly — every text a grant keeps is refused when it is read if it carries one:
+     *
+     *   · a control character: the C0 controls, DEL and the C1 controls (U+0000–U+001F, U+007F–U+009F) — the line
+     *     break and the tab are two of them;
+     *   · a FORMAT character, every one (general category Cf): the direction controls (U+061C, U+200E, U+200F,
+     *     U+202A–U+202E, U+2066–U+2069), the zero-width space, non-joiner and joiner (U+200B–U+200D), the soft
+     *     hyphen (U+00AD), the word joiner and the invisible operators (U+2060–U+2064), U+206A–U+206F, the byte order
+     *     mark (U+FEFF), the interlinear annotation marks (U+FFF9–U+FFFB), the tags (U+E0001, U+E0020–U+E007F), the
+     *     Mongolian vowel separator (U+180E) — and the rest of that category, some of which do draw something:
+     *     U+0600–U+0605, U+06DD, U+070F, U+0890–U+0891, U+08E2, U+110BD, U+110CD, U+13430–U+1343F, U+1BCA0–U+1BCA3,
+     *     U+1D173–U+1D17A;
      *   · the line and the paragraph separator (U+2028, U+2029);
-     *   · and bytes that are not text at all.
+     *   · every space that is not U+0020 (general category Zs): U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F,
+     *     U+3000;
+     *   · a variation selector (U+180B–U+180D, U+180F, U+FE00–U+FE0F, U+E0100–U+E01EF) and the combining grapheme
+     *     joiner (U+034F);
+     *   · a filler that prints as nothing: U+115F, U+1160, U+3164, U+FFA0, U+2800;
+     *   · a private-use character (Co), a place nothing is assigned to (Cn — the noncharacters and the rest of the
+     *     tag block among them), and bytes that are not text at all — a surrogate among them, which UTF-8 does not
+     *     spell;
+     *   · and a SPACE AT EITHER END: a text is given as it reads, and nothing trims it.
      *
-     * Letters written right to left are text and are taken; what is refused is the control that turns them.
+     * WHAT THAT COSTS, and was accepted: a no-break space, a soft hyphen, a zero-width joiner or non-joiner and a
+     * variation selector are part of how some languages and some emoji are written, and a text that needs one is
+     * not taken.
+     *
+     * WHICH PLACES ARE ASSIGNED, and which characters are format characters, is read from the Unicode tables of the
+     * PCRE the host runs (the lists above are those of Unicode 16). A host with older tables refuses a character a
+     * newer one takes — a letter added to Unicode since — and a document that uses none of those is read the same
+     * everywhere.
+     *
+     * WHAT THIS IS NOT: a promise that nothing unseen is left. It refuses what is listed. Two characters Unicode
+     * itself says are shown as nothing are not on the list and are taken — the Khmer inherent vowels, U+17B4 and
+     * U+17B5 — and a mark that stacks on a letter, or a letter of another alphabet that looks the same, is text.
      */
     public static function oneLine(string $text): bool
     {
-        return preg_match('/[\x{0000}-\x{001F}\x{007F}-\x{009F}\x{061C}\x{200E}\x{200F}\x{2028}-\x{202E}\x{2066}-\x{2069}]/u', $text) === 0;
+        return preg_match(self::UNSEEN, $text) === 0 && !str_starts_with($text, ' ') && !str_ends_with($text, ' ');
     }
 
     /** What a refusal says of a text that is not one line of plain text; `$what` names it, as «X gives «key»». */
     public static function notOneLine(string $what, string $text): string
     {
-        return \sprintf('%s in one line of plain text — no line break, no tab, no control character, and nothing that turns the direction it is read in: what a person signs is read as it is written. Got %s', $what, self::shown($text));
+        return \sprintf('%s in one line of plain text — no line break, no tab, no control or format character, nothing that is not shown, no space but the ordinary one and none at its ends: what a person signs is read as it is written. Got %s', $what, self::shown($text));
     }
 
     /**
