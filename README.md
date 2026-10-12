@@ -194,12 +194,12 @@ verdict:
 | # | Check | Refuses when |
 |---|-------|--------------|
 | 1 | `Named` | the grant does not name this operation, these arguments and this seat — the call is then judged as it was before any grant existed |
-| 2 | `Signature` | the grant's signature does not hold *now* |
+| 2 | `Signature` | the grant's signature does not hold *now* — and a host that does not say it verified it (`new GrantStanding()`) is read as one that did not |
 | 3 | `InForce` | it is suspended, superseded, revoked, or past its own date |
 | 4 | `Watched` | the operation watching its falsifier gave no sign of life within its window |
 | 5 | `Subject` | the operation cannot say what content this call acts on |
 | 6 | `Ceiling` | the effect of this call is wider than the grant's ceiling (`EffectProfile::isNoWiderThan`, the one comparator) |
-| 7 | `Conditions` | a condition has no green receipt on this content, from the instrument as it is today |
+| 7 | `Conditions` | a condition has no green receipt on this content, from the instrument as it is today — or the last receipt about this content says no |
 
 ```php
 $verdict = StandingJudge::judge($grant, $standing, $call);
@@ -225,12 +225,41 @@ unclassified axis, a ceiling above `compensatable`, a ceiling whose **authority*
 `standing.*` operation, a grant with no condition, a falsifier nothing watches, and **any key it
 does not read** — a line the judge would ignore is a limit nobody keeps.
 
+**The text a person signs is read with `StandingGrant::fromJson()`**, and it is read as it is shown:
+
+- it says each thing **once** — a key said twice in one object is refused, at every depth, however
+  it is spelled (a reader of JSON would take the last one and never mention the first);
+- a list is written as a list — never as an object with the keys `"0"`, `"1"`;
+- a name ends where it ends: an id, the name of an operation and the operation a ceiling names as
+  its inverse take nothing after them, not even a newline;
+- its **ceiling is read as it is written, or refused** — each axis is one of its values, an inverse
+  (`rollback_contract`) is the name of one operation in words, and what the lenient reader of a
+  stored profile would drop or change is not taken;
+- `expires_at` is one form — the date, a `T`, the time to the second, then `Z` or the offset — whose
+  own spelling in UTC is that form too.
+
+`fromArray()` reads a document already in an array, and cannot see a key said twice: the array holds
+the last one only.
+
+A refusal says back what the drafter wrote **as JSON spells it, in plain characters, and at most a
+line of it** (`Canonical::shown()`). A document may be drafted by someone other than the person who
+reads the refusal; said back raw, a key could clear the line a terminal printed it on.
+
 A grant names calls in two ways, and the difference is deliberate. What it **covers** is matched
 openly: the call carries each fixed argument, and the rest is free — the candidate changes on every
 call. The operation that **measures** a condition and the one that **watches** the falsifier are
 matched closed (`NamedCall::matchesExactly()`): besides the fixed arguments a call may carry only
 those listed in `free`, typically the one that says which candidate. An open match fails open
 there — a later run with `--lenient` would speak for the condition.
+
+That is for what speaks **for** a condition. A receipt that says **no** is read open: a run that
+carries what the condition fixes and one argument more is still the instrument saying no of that
+very content, and it is the one that speaks until the content is measured again.
+
+An argument — fixed or free — is named in **letters and underscores, starting with a letter**, at
+most 64 of them. A name with a space after it, or with a letter of another alphabet that looks the
+same, is a name no operation gives an argument: a grant that fixed it would cover a call carrying it
+beside the real one.
 
 ```json
 "conditions": [{"name": "no-host-names", "statement": "what is published names no machine",
@@ -240,6 +269,19 @@ there — a later run with `--lenient` would speak for the condition.
 A grant that supersedes a **suspended** one says which suspension it lifts (`lifts`, beside
 `supersedes`): taking a suspended grant out of the way is growing back, and growing back names what
 it lifts.
+
+**One spelling, and what it is.** `StandingGrant::digest()` is the digest of `Canonical::json()`:
+every map sorted **by the bytes of its keys**, every list left alone. Not every value survives that
+spelling — negative zero, a whole float, a float's precision (`serialize_precision`), a map whose
+keys are 0, 1, 2…, a structure nested deeper than JSON is read — and a grant carries none of them. A
+host that writes a line with it reads the line back before it trusts it.
+
+**What a host owes a line it can no longer read.** There is one reader for a new document and for
+one already signed, and a later version of this contract may refuse what an earlier one took. A
+host that keeps signed documents, or receipts, and reads them again treats one it can no longer read
+as a **fault of its record** — never as a grant that is not there, or a measurement that was never
+taken: the first would bring back whatever that grant had replaced or stopped, and the second would
+leave the green receipt before a red one speaking.
 
 **What it cannot say: money.** There is no effect axis for it, so no ceiling bounds what a call
 spends, and nothing in an operation's declaration says that it spends. "Do not grant over an

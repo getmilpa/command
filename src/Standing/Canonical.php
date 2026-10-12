@@ -25,11 +25,20 @@ namespace Milpa\Command\Standing;
  * Part of the contract, not a convenience: a host that keeps a record of grants and receipts digests
  * its lines with the same spelling, so that a judge written anywhere reads the same bytes.
  *
+ * THE ORDER IS THE ORDER OF THE BYTES. A map is sorted by the bytes of its keys, the way any language
+ * sorts text — never the way one language compares what looks like a number: `"10"` comes before `"9"`,
+ * and `"1.0"` and `"1.00"` are two keys with one place each. (Sorted as numbers they were equal, so the
+ * order a document was written in showed in its digest: one grant, two or three digests.)
+ *
  * WHAT THIS SPELLING IS NOT: something every value survives. A number that is negative zero is written
- * with its sign and read back without it, and a structure nested deeper than JSON is read cannot be
- * read back at all. Nothing in this contract reads back what it digested, so its own digests hold; a
- * host that WRITES a line with this spelling and reads it later has to read it back before it trusts
- * it, and not write one that does not say the same.
+ * with its sign and read back without it; a whole float comes back a whole number; a float is written
+ * with the precision of the process that writes it (`serialize_precision`), so two processes may spell
+ * one differently; a map whose keys are 0, 1, 2… in that order comes back a list; a structure nested
+ * deeper than JSON is read cannot be read back at all; and what is not a number or not text — `INF`,
+ * `NAN`, bytes that are not UTF-8 — is not spelled: it throws `JsonException`. A grant carries none of
+ * these: its values are text, whole numbers and true or false. Nothing in this contract reads back
+ * what it digested, so its own digests hold; a host that WRITES a line with this spelling and reads it
+ * later has to read it back before it trusts it, and not write one that does not say the same.
  */
 final class Canonical
 {
@@ -50,12 +59,18 @@ final class Canonical
      * document the judge reads are then not the same, and whoever drafts it chooses which the person sees. A
      * document a person signs says each thing once — at every depth, and however a key is spelled.
      *
-     * @param string $json JSON that already parses: this reads its keys, it does not validate it
+     * It answers for any text. One that does not parse — or that is nested deeper than a document is read — is
+     * refused before a key is looked at: the scan below walks a text it can trust to be closed, and it used to walk
+     * one it could not, and never came back. And it costs what the text is long: a frame is asked for its name, never
+     * kept by a second hand, which copied every key an object had said each time one more was read.
      *
-     * @throws \InvalidArgumentException naming the key, and the object it is said twice in
+     * @throws \InvalidArgumentException naming the key, and the object it is said twice in — or saying the text is not JSON
      */
     public static function saidOnce(string $json, string $where): void
     {
+        if (!json_validate($json)) {
+            throw new \InvalidArgumentException($where . ' is not JSON this contract reads: it does not parse, or it is nested deeper than a document is read');
+        }
         // One frame per object or list that is open: the keys an object has said, and the name it is known by.
         $open = [];
         $text = null;
@@ -73,19 +88,62 @@ final class Canonical
                 $frame = \count($open) - 1;
                 if (isset($open[$frame]['said']['«' . $key])) {
                     throw new \InvalidArgumentException(\sprintf(
-                        '%s says «%s» twice%s: a document a person signs says each thing once — a reader would take the last one and never mention the first',
+                        '%s says %s twice%s: a document a person signs says each thing once — a reader would take the last one and never mention the first',
                         $where,
-                        $key,
-                        $open[$frame]['name'] === null ? '' : ', inside «' . $open[$frame]['name'] . '»',
+                        self::shown($key),
+                        $open[$frame]['name'] === null ? '' : ', inside ' . self::shown($open[$frame]['name']),
                     ));
                 }
                 $open[$frame]['said']['«' . $key] = true;
                 $open[$frame]['last'] = $key;
             } elseif ($byte === '{' || $byte === '[') {
-                $parent = $open === [] ? null : $open[\count($open) - 1];
-                $open[] = ['said' => [], 'last' => null, 'name' => $parent === null ? null : ($parent['last'] ?? $parent['name'])];
+                $last = \count($open) - 1;
+                $open[] = ['said' => [], 'last' => null, 'name' => $last < 0 ? null : ($open[$last]['last'] ?? $open[$last]['name'])];
             } elseif ($byte === '}' || $byte === ']') {
                 array_pop($open);
+            }
+        }
+    }
+
+    /**
+     * What a drafter wrote, the way a refusal may say it back: spelled as JSON spells it, in plain characters, and
+     * at most a line of it.
+     *
+     * A refusal is read by a person, often at a terminal, and what it quotes was written by whoever drafted the
+     * document — who may not be that person. Said back raw, a key or an id can clear the line it is printed on and
+     * leave «OK: … is in force» in its place, or run for three hundred thousand bytes. So nothing a terminal obeys
+     * and no character that reorders what is read is ever said back as it came: every one is written as its escape.
+     */
+    public static function shown(mixed $written): string
+    {
+        // Whatever cannot be spelled is spelled in part: this is asked of what a document held, never refused.
+        $spelled = (string) json_encode($written, \JSON_INVALID_UTF8_SUBSTITUTE | \JSON_PARTIAL_OUTPUT_ON_ERROR | \JSON_UNESCAPED_SLASHES);
+
+        return \strlen($spelled) <= 96 ? $spelled : substr($spelled, 0, 96) . '… (' . \strlen($spelled) . ' bytes as written)';
+    }
+
+    /**
+     * Refuse a JSON text that writes a list as an object whose keys are "0", "1", "2"…
+     *
+     * Read into an array, such an object IS a list: a second spelling of the same document, with the same digest,
+     * in a contract that asks for one. Which of the two was written can only be told from the text, so it is told
+     * here, from the text as it parses.
+     *
+     * @param mixed $read the text, decoded with objects kept as objects
+     *
+     * @throws \InvalidArgumentException naming where the list is
+     */
+    public static function listsAreLists(mixed $read, string $where, ?string $name = null): void
+    {
+        if (\is_object($read)) {
+            $keys = array_keys(get_object_vars($read));
+            if ($keys !== [] && array_map(strval(...), $keys) === array_map(strval(...), array_keys($keys))) {
+                throw new \InvalidArgumentException(\sprintf('%s writes a list as an object with the keys "0", "1"…%s: a list is written as a list', $where, $name === null ? '' : ', in ' . self::shown($name)));
+            }
+        }
+        if (\is_object($read) || \is_array($read)) {
+            foreach ((array) $read as $key => $item) {
+                self::listsAreLists($item, $where, \is_object($read) ? (string) $key : $name);
             }
         }
     }
@@ -105,9 +163,9 @@ final class Canonical
         foreach (array_keys($data) as $key) {
             if (!\in_array($key, $known, true)) {
                 throw new \InvalidArgumentException(\sprintf(
-                    '%s carries «%s», which nothing reads (it reads: %s). A line the judge ignores is a limit nobody keeps — remove it.',
+                    '%s carries %s, which nothing reads (it reads: %s). A line the judge ignores is a limit nobody keeps — remove it.',
                     $where,
-                    (string) $key,
+                    self::shown((string) $key),
                     implode(', ', $known),
                 ));
             }
@@ -137,7 +195,7 @@ final class Canonical
     private static function sorted(array $value): array
     {
         if (!array_is_list($value)) {
-            ksort($value);
+            ksort($value, \SORT_STRING);
         }
         foreach ($value as $key => $item) {
             if (\is_array($item)) {

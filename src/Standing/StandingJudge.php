@@ -130,8 +130,13 @@ final class StandingJudge
         foreach ($grant->conditions as $condition) {
             $measuring = $condition->by->operation->forCli();
             $last = null;
+            // WHAT SPEAKS FOR A CONDITION IS READ CLOSED, AND WHAT SPEAKS AGAINST IT IS READ OPEN. A green receipt
+            // counts only from the run the condition describes — a lenient run that says yes measured something else.
+            // A red one from a run that carries those arguments AND one more is the instrument saying no of this very
+            // content: read closed, it was ignored, and the green before it went on speaking.
             foreach ($standing->receipts as $receipt) {
-                if ($receipt->subject === $call->subject && $condition->by->matchesExactly($receipt->by, $receipt->arguments)) {
+                if ($receipt->subject === $call->subject
+                    && ($condition->by->matchesExactly($receipt->by, $receipt->arguments) || (!$receipt->ok && $condition->by->matches($receipt->by, $receipt->arguments)))) {
                     $last = $receipt;
                 }
             }

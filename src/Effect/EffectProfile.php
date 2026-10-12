@@ -170,7 +170,7 @@ final class EffectProfile
      */
     private static function namesAnOperation(string $contract): bool
     {
-        return preg_match('/^[a-z0-9]+(?:[-][a-z0-9]+)*(?:\.[a-z0-9]+(?:[-][a-z0-9]+)*)*$/', OperationId::canonizar($contract)) === 1;
+        return preg_match('/^[a-z0-9]+(?:[-][a-z0-9]+)*(?:\.[a-z0-9]+(?:[-][a-z0-9]+)*)*$/D', OperationId::canonizar($contract)) === 1;
     }
 
     /**

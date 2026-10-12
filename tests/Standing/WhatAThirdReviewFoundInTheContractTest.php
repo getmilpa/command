@@ -46,11 +46,11 @@ final class WhatAThirdReviewFoundInTheContractTest extends TestCase
         yield 'who it lends to' => ['{"to":["SOMEONE-ELSE"],' . substr($whole, 1), 'to', ''];
         yield 'what it covers' => [substr($whole, 0, -1) . ',"covers":[{"operation":"lab:everything"}]}', 'covers', ''];
         yield 'its own id' => ['{"id":"another",' . substr($whole, 1), 'id', ''];
-        yield 'an axis of its ceiling' => [self::written('"reversibility":"compensatable"', '"reversibility":"irreversible","reversibility":"compensatable"'), 'reversibility', ', inside «ceiling»'];
-        yield 'the operation of a covered call' => [self::written('"covers":[{"operation":"lab:publish"', '"covers":[{"operation":"lab:announce","operation":"lab:publish"'), 'operation', ', inside «covers»'];
-        yield 'an argument a covered call fixes' => [self::written('"arguments":{"channel":"stable"}', '"arguments":{"channel":"beta","channel":"stable"}'), 'channel', ', inside «arguments»'];
-        yield 'the instrument of a condition' => [self::written('"by":{"operation":"lab:scan"', '"by":{"operation":"lab:soft","operation":"lab:scan"'), 'operation', ', inside «by»'];
-        yield 'the watcher of its falsifier' => [self::written('"watcher":{"operation":"lab:watch"}', '"watcher":{"operation":"lab:watch"},"watcher":{"operation":"lab:blind"}'), 'watcher', ', inside «falsifier»'];
+        yield 'an axis of its ceiling' => [self::written('"reversibility":"compensatable"', '"reversibility":"irreversible","reversibility":"compensatable"'), 'reversibility', ', inside "ceiling"'];
+        yield 'the operation of a covered call' => [self::written('"covers":[{"operation":"lab:publish"', '"covers":[{"operation":"lab:announce","operation":"lab:publish"'), 'operation', ', inside "covers"'];
+        yield 'an argument a covered call fixes' => [self::written('"arguments":{"channel":"stable"}', '"arguments":{"channel":"beta","channel":"stable"}'), 'channel', ', inside "arguments"'];
+        yield 'the instrument of a condition' => [self::written('"by":{"operation":"lab:scan"', '"by":{"operation":"lab:soft","operation":"lab:scan"'), 'operation', ', inside "by"'];
+        yield 'the watcher of its falsifier' => [self::written('"watcher":{"operation":"lab:watch"}', '"watcher":{"operation":"lab:watch"},"watcher":{"operation":"lab:blind"}'), 'watcher', ', inside "falsifier"'];
         yield 'a key spelled two ways' => ['{"\\u0074o":["SOMEONE-ELSE"],' . substr($whole, 1), 'to', ''];
         yield 'a key with a quote in it' => [substr($whole, 0, -1) . ',"a \\"b":1,"a \\"b":2}', 'a "b', ''];
     }
@@ -63,7 +63,7 @@ final class WhatAThirdReviewFoundInTheContractTest extends TestCase
         try {
             $grant = StandingGrant::fromJson($text);
         } catch (\InvalidArgumentException $refused) {
-            self::assertStringContainsString("a standing grant says «{$key}» twice{$inside}: a document a person signs says each thing once", $refused->getMessage());
+            self::assertStringContainsString('a standing grant says ' . json_encode($key) . " twice{$inside}: a document a person signs says each thing once", $refused->getMessage());
 
             return;
         }

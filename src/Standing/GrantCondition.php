@@ -53,6 +53,8 @@ final readonly class GrantCondition
         Canonical::only($data, ['name', 'statement', 'by'], 'a condition');
         $name = Canonical::text($data, 'name', 'a condition');
 
-        return new self($name, Canonical::text($data, 'statement', "condition «{$name}»"), NamedCall::fromArray($data['by'] ?? null, "condition «{$name}», in «by»,"));
+        $where = 'condition ' . Canonical::shown($name);
+
+        return new self($name, Canonical::text($data, 'statement', $where), NamedCall::fromArray($data['by'] ?? null, "{$where}, in «by»,"));
     }
 }

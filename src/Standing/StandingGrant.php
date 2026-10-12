@@ -17,7 +17,10 @@ namespace Milpa\Command\Standing;
 use Milpa\Command\Consent\OperationId;
 use Milpa\Command\Effect\Authority;
 use Milpa\Command\Effect\EffectProfile;
+use Milpa\Command\Effect\Externality;
+use Milpa\Command\Effect\Mutation;
 use Milpa\Command\Effect\Reversibility;
+use Milpa\Command\Effect\Subject;
 
 /**
  * A STANDING GRANT: what a person signs once so that a seat may repeat an act without asking — under
@@ -80,7 +83,7 @@ final readonly class StandingGrant
     /** The highest authority a ceiling may carry: acting as a user. Above it an act decides what the house believes. */
     public const Authority CEILING_AUTHORITY = Authority::WriteAsUser;
 
-    private const ID = '/^[a-z0-9][a-z0-9._-]{0,62}$/';
+    private const ID = '/^[a-z0-9][a-z0-9._-]{0,62}$/D';
 
     private const KEYS = ['id', 'supersedes', 'lifts', 'to', 'covers', 'ceiling', 'conditions', 'undo', 'falsifier', 'expires_at'];
 
@@ -113,11 +116,9 @@ final readonly class StandingGrant
         public ?\DateTimeImmutable $expiresAt = null,
         public ?string $lifts = null,
     ) {
-        if (preg_match(self::ID, $id) !== 1) {
-            throw new \InvalidArgumentException("a standing grant is known by a short id — lowercase letters, digits, dot, dash or underscore, e.g. «m-01»; got «{$id}»");
-        }
+        self::known($id);
         if ($supersedes !== null && (preg_match(self::ID, $supersedes) !== 1 || $supersedes === $id)) {
-            throw new \InvalidArgumentException("standing grant «{$id}» supersedes another grant by its id, and never itself; got «{$supersedes}»");
+            throw new \InvalidArgumentException("standing grant «{$id}» supersedes another grant by its id, and never itself; got " . Canonical::shown($supersedes));
         }
 
         if ($lifts !== null && ($supersedes === null || trim($lifts) === '')) {
@@ -135,7 +136,7 @@ final readonly class StandingGrant
             throw new \InvalidArgumentException("standing grant «{$id}» lends to nobody: name at least one seat in «to»");
         }
         $seats = array_map(strval(...), array_keys($seats));
-        sort($seats);
+        sort($seats, \SORT_STRING);
 
         if ($covers === []) {
             throw new \InvalidArgumentException("standing grant «{$id}» covers nothing: name at least one operation in «covers»");
@@ -277,7 +278,26 @@ final readonly class StandingGrant
 
         // A day, an hour or a second that does not exist is read by rolling over to one that does: what it reads
         // back as is then not what was written.
-        return $instant !== false && $instant->format('Y-m-d\TH:i:s') === substr($text, 0, 19) ? $instant : null;
+        if ($instant === false || $instant->format('Y-m-d\TH:i:s') !== substr($text, 0, 19)) {
+            return null;
+        }
+
+        // AND IT IS AN INSTANT THIS READER TAKES IN ITS OWN SPELLING. A grant spells its expiry in UTC, and the last
+        // second of year 9999 written west of UTC is year 10000 there: a text this very reader refuses. A grant that
+        // could be read and whose own spelling could not would be a document its house cannot read back.
+        return preg_match('/^\d{4}$/D', $instant->setTimezone(new \DateTimeZone('UTC'))->format('Y')) === 1 ? $instant : null;
+    }
+
+    /**
+     * Refuse an id that is not one: a short name in plain lowercase, and nothing after it.
+     *
+     * @throws \InvalidArgumentException
+     */
+    private static function known(string $id): void
+    {
+        if (preg_match(self::ID, $id) !== 1) {
+            throw new \InvalidArgumentException('a standing grant is known by a short id — lowercase letters, digits, dot, dash or underscore, e.g. «m-01»; got ' . Canonical::shown($id));
+        }
     }
 
     /** The exact bytes that identify this grant — one spelling, whatever order its author wrote it in. */
@@ -293,7 +313,12 @@ final readonly class StandingGrant
     }
 
     /**
-     * A grant from the document a person wrote. Every refusal names what is missing or what is not read.
+     * A grant from the document a person wrote, already read into an array. Every refusal names what is missing or
+     * what is not read.
+     *
+     * WHAT AN ARRAY NO LONGER SAYS. A text that says a key twice, or writes a list as an object, is refused by
+     * {@see self::fromJson()}, which reads the text: this cannot see a key said twice, because the array holds the
+     * last one only. Whoever holds the text a person signed reads it with `fromJson()`.
      *
      * @param array<array-key, mixed> $data
      */
@@ -301,6 +326,8 @@ final readonly class StandingGrant
     {
         Canonical::only($data, self::KEYS, 'a standing grant');
         $id = Canonical::text($data, 'id', 'a standing grant');
+        // The id is looked at before a sentence is built around it: every refusal below names the grant by it.
+        self::known($id);
         $where = "standing grant «{$id}»";
 
         $ceiling = $data['ceiling'] ?? null;
@@ -308,6 +335,7 @@ final readonly class StandingGrant
             throw new \InvalidArgumentException("{$where} needs «ceiling»: the widest effect a covered call may have, on all five axes");
         }
         Canonical::only($ceiling, ['mutation', 'externality', 'reversibility', 'authority', 'subject', 'rollback_contract'], "the ceiling of {$where}");
+        $read = self::ceiling($ceiling, $where);
 
         $expires = $data['expires_at'] ?? null;
         $expiresAt = \is_string($expires) ? self::instant($expires) : null;
@@ -328,7 +356,7 @@ final readonly class StandingGrant
             id: $id,
             to: self::listOf($data, 'to', $where),
             covers: array_map(static fn (mixed $act): NamedCall => NamedCall::fromArray($act, "{$where}, in «covers»,"), self::listOf($data, 'covers', $where)),
-            ceiling: EffectProfile::fromArray($ceiling),
+            ceiling: $read,
             conditions: array_map(GrantCondition::fromArray(...), self::listOf($data, 'conditions', $where)),
             undo: Canonical::text($data, 'undo', $where),
             falsifier: Falsifier::fromArray($data['falsifier'] ?? null),
@@ -354,8 +382,54 @@ final readonly class StandingGrant
             throw new \InvalidArgumentException('a standing grant is one JSON object: {"id", "to", "covers", "ceiling", "conditions", "undo", "falsifier"}');
         }
         Canonical::saidOnce($json, 'a standing grant');
+        // The shape of a list is decided from the text: read into an array, `{"0": …, "1": …}` is one.
+        Canonical::listsAreLists(json_decode($json), 'a standing grant');
 
         return self::fromArray($data);
+    }
+
+    /**
+     * The ceiling a document writes — read as it is written, or refused.
+     *
+     * A VALUE THE READER DOES NOT KEEP IS A LINE NOBODY KEEPS (greenhouse decisions/0615, «Lo que la cuarta revisión
+     * encontró», L2). The reader of a stored profile is lenient on purpose: it reads history, and it normalises what
+     * an older rule wrote. A grant is not history — a person is signing it now — so whatever that reader would drop
+     * or change is refused here instead: an inverse that is not the name of one operation in words, and an axis
+     * that is read as another than the one written. Otherwise two documents a person reads differently would be
+     * one grant, with one digest, and the record could not say which was signed.
+     *
+     * @param array<array-key, mixed> $written
+     */
+    private static function ceiling(array $written, string $where): EffectProfile
+    {
+        $axes = ['mutation' => Mutation::class, 'externality' => Externality::class, 'reversibility' => Reversibility::class, 'authority' => Authority::class, 'subject' => Subject::class];
+        foreach ($axes as $axis => $enum) {
+            $value = $written[$axis] ?? null;
+            if (!\is_string($value) || $enum::tryFrom($value) === null) {
+                throw new \InvalidArgumentException(\sprintf(
+                    '%s gives «%s» of its ceiling as one of: %s; got %s',
+                    $where,
+                    $axis,
+                    implode(', ', array_map(static fn (\BackedEnum $case): string => (string) $case->value, $enum::cases())),
+                    Canonical::shown($value),
+                ));
+            }
+        }
+        $inverse = $written['rollback_contract'] ?? null;
+        if ($inverse !== null && (!\is_string($inverse) || trim($inverse) === '')) {
+            throw new \InvalidArgumentException("{$where} gives «rollback_contract» of its ceiling as the name of the one operation that undoes, in words — or does not give it; got " . Canonical::shown($inverse));
+        }
+        $read = EffectProfile::fromArray($written);
+        if ($read->rollbackContract !== $inverse) {
+            throw new \InvalidArgumentException("{$where} gives «rollback_contract» of its ceiling, and nothing of it is kept: a line the judge ignores is a limit nobody keeps — remove it");
+        }
+        foreach (['mutation' => $read->mutation, 'externality' => $read->externality, 'reversibility' => $read->reversibility, 'authority' => $read->authority, 'subject' => $read->subject] as $axis => $kept) {
+            if ($kept->value !== $written[$axis]) {
+                throw new \InvalidArgumentException(\sprintf('%s writes «%s» of its ceiling as «%s», and it is read as «%s»: a grant says what it is read as — write that', $where, $axis, (string) $written[$axis], $kept->value));
+            }
+        }
+
+        return $read;
     }
 
     /**

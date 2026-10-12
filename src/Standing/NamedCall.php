@@ -37,6 +37,16 @@ use Milpa\Command\Consent\OperationId;
  */
 final readonly class NamedCall
 {
+    /**
+     * How an argument is named: letters and underscores, starting with a letter, at most 64 of them.
+     *
+     * A name a person can read, and no other. «channel » with a space after it, or with a letter of another
+     * alphabet that looks the same, is a name no operation gives an argument: a grant that fixed it would cover a
+     * call carrying it BESIDE the real one, whatever the real one said. Measured on the published catalogue, this is
+     * the narrowest alphabet that refuses none of the 76 names its operations declare.
+     */
+    private const ARGUMENT = '/^[A-Za-z][A-Za-z_]{0,63}$/D';
+
     public OperationId $operation;
 
     /** @var array<string, string|int|bool> */
@@ -53,39 +63,39 @@ final readonly class NamedCall
     public function __construct(OperationId|string $operation, array $arguments = [], array $free = [])
     {
         $id = $operation instanceof OperationId ? $operation : new OperationId($operation);
-        if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/', $id->canonical) !== 1) {
+        if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/D', $id->canonical) !== 1) {
             throw new \InvalidArgumentException(\sprintf(
-                '«%s» does not name one operation. A standing grant names each operation whole — no pattern, no wildcard: what is not named is not covered.',
-                $operation instanceof OperationId ? $operation->canonical : $operation,
+                '%s does not name one operation. A standing grant names each operation whole — no pattern, no wildcard: what is not named is not covered.',
+                Canonical::shown($operation instanceof OperationId ? $operation->canonical : $operation),
             ));
         }
 
         $fixed = [];
         foreach ($arguments as $name => $value) {
-            if (!\is_string($name) || trim($name) === '' || !(\is_string($value) || \is_int($value) || \is_bool($value))) {
+            if (!\is_string($name) || preg_match(self::ARGUMENT, $name) !== 1 || !(\is_string($value) || \is_int($value) || \is_bool($value))) {
                 throw new \InvalidArgumentException(\sprintf(
-                    'an argument fixed for «%s» is a name and one plain value — text, a whole number, or true/false; got %s',
+                    'an argument fixed for «%s» is a name — letters and underscores, starting with a letter — and one plain value: text, a whole number, or true/false; got %s',
                     $id->canonical,
-                    json_encode([$name => $value]) ?: get_debug_type($value),
+                    Canonical::shown([$name => $value]),
                 ));
             }
             $fixed[$name] = $value;
         }
-        ksort($fixed);
+        ksort($fixed, \SORT_STRING);
 
         $open = [];
         foreach ($free as $name) {
-            if (!\is_string($name) || trim($name) === '' || \array_key_exists($name, $fixed)) {
+            if (!\is_string($name) || preg_match(self::ARGUMENT, $name) !== 1 || \array_key_exists($name, $fixed)) {
                 throw new \InvalidArgumentException(\sprintf(
-                    '«free» of «%s» lists the names of the arguments a call may carry with any value — and never one it already fixes; got %s',
+                    '«free» of «%s» lists the names of the arguments a call may carry with any value — each in letters and underscores, starting with a letter, and never one it already fixes; got %s',
                     $id->canonical,
-                    json_encode($name) ?: get_debug_type($name),
+                    Canonical::shown($name),
                 ));
             }
             $open[$name] = true;
         }
         $open = array_map(strval(...), array_keys($open));
-        sort($open);
+        sort($open, \SORT_STRING);
 
         $this->operation = $id;
         $this->arguments = $fixed;

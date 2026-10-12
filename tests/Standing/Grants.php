@@ -93,14 +93,15 @@ final class Grants
     }
 
     /**
-     * The house as it stands when everything is in order: in force, watched ten minutes ago, the candidate
-     * measured green by today's scanner.
+     * The house as it stands when everything is in order: its signature verified, in force, watched ten minutes
+     * ago, the candidate measured green by today's scanner.
      *
      * @param list<ConditionReceipt>|null $receipts
      */
     public static function standing(?array $receipts = null, ?string $watcherSignalAt = '2026-10-11T11:50:00Z'): GrantStanding
     {
         return new GrantStanding(
+            signatureFault: null,
             watcherSignalAt: $watcherSignalAt === null ? null : self::at($watcherSignalAt),
             receipts: $receipts ?? [self::receipt()],
             instruments: ['lab.scan' => self::INSTRUMENT],

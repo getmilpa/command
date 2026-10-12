@@ -74,8 +74,15 @@ final readonly class ConditionReceipt
     /**
      * A receipt back from what a ledger stored, or `null` when the line is not one.
      *
-     * `null` and not an exception: a ledger is read whole, and one line that is not a receipt must not
-     * make the rest unreadable. What cannot be read simply measures nothing.
+     * `null` and not an exception: this is asked line by line, and it says of ONE line that it is not a
+     * receipt. It decides nothing about the book that line is in.
+     *
+     * WHAT A HOST OWES A LINE IT CAN NO LONGER READ. The judge listens to the LAST receipt about a content,
+     * so a red one that stops reading as a receipt leaves the green before it speaking. A host that kept a
+     * line as a receipt and gets `null` for it here — because this reader, or its own writer, changed since
+     * — treats that line as it treats a grant it can no longer read ({@see StandingGrant::fromJson()}): it
+     * is a FAULT of its record, never «nothing was measured». The `at` of a receipt is for the reader of the
+     * record and is read loosely; the judge joins by content, not by clock.
      *
      * @param array<array-key, mixed> $data
      */
