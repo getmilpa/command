@@ -90,12 +90,14 @@ final readonly class DescentCertificate
             'subject' => $p->subject->value,
         ];
 
+        // By the bytes of the names, never the way PHP compares what looks like a number: two keys that compare
+        // equal as numbers kept the order they were written in, and one certificate had two spellings to sign.
         $predicado = $this->predicate;
-        ksort($predicado);
+        ksort($predicado, \SORT_STRING);
         $sobre = $this->envelope;
         $this->ordenaProfundo($sobre);
         $cubre = $this->covers;
-        sort($cubre);
+        sort($cubre, \SORT_STRING);
 
         return (string) json_encode([
             'certificate_subject' => [
@@ -195,7 +197,7 @@ final readonly class DescentCertificate
     /** @param array<string, mixed> $bag */
     private function ordenaProfundo(array &$bag): void
     {
-        ksort($bag);
+        ksort($bag, \SORT_STRING);
         foreach ($bag as &$v) {
             if (\is_array($v) && ! array_is_list($v)) {
                 /** @var array<string, mixed> $v */

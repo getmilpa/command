@@ -44,8 +44,9 @@ final readonly class ContextFacts
     /** A stable digest of the facts, so a receipt can cite exactly what was judged. */
     public function fingerprint(): string
     {
+        // By the bytes, never the way PHP compares what looks like a number: «1.0» and «1.00» are two scopes.
         $scopes = $this->scopes;
-        sort($scopes);
+        sort($scopes, \SORT_STRING);
 
         return 'sha256:' . hash('sha256', (string) json_encode([
             'channel' => $this->channel,

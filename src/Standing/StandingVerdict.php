@@ -19,7 +19,11 @@ namespace Milpa\Command\Standing;
  *
  * Three answers, and they must not be confused: the grant does not name this call (it is nobody's
  * refusal — the call goes on to whatever judged it before); it names the call and refuses it; it names
- * the call and lets it pass. There is no fourth: a verdict never grants, widens or restores anything.
+ * the call and lets it pass. A verdict never grants, widens or restores anything.
+ *
+ * {@see StandingJudge::among()} has a fourth of its own, and {@see StandingJudge::judge()} never gives it: the
+ * grant does not name the call as it is spelled, is STOPPED, and may be the one that names it — `stopped_beside`.
+ * It is a refusal, and `named()` answers true for it.
  *
  * `reason` is the stable word for the failure, for a host that words its own refusals or translates
  * them; `sentence` is the English one, written for whoever is reading the refusal.
@@ -59,7 +63,14 @@ final readonly class StandingVerdict
         return $this->failed === null;
     }
 
-    /** Whether the grant names this call at all — false means it is not this grant's to judge. */
+    /**
+     * Whether this is a grant's answer ABOUT this call — false means the grant does not name it as it is spelled:
+     * nobody's refusal, and the call goes on to whatever judged it before.
+     *
+     * A STOP BESIDE THE CALL answers true (`stopped_beside`, which only {@see StandingJudge::among()} gives): the
+     * grant does not name the call exactly, and refuses it all the same. So «false» from
+     * {@see StandingJudge::judge()} does not say that no stop stands in the way — that is `among()`'s to say.
+     */
     public function named(): bool
     {
         return $this->failed !== StandingCheck::Named;

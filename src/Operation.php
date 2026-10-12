@@ -372,7 +372,7 @@ readonly class Operation
 
         $effects = $this->effectCeiling();
         $scopes = $this->scopes;
-        sort($scopes);
+        sort($scopes, \SORT_STRING);
 
         return 'sha256:' . hash('sha256', Standing\Canonical::json([
             'acts_on' => $subject,

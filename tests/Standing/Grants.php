@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Milpa\Command\Tests\Standing;
 
-use Milpa\Command\Consent\OperationId;
 use Milpa\Command\Effect\Authority;
 use Milpa\Command\Effect\EffectProfile;
 use Milpa\Command\Effect\Externality;
@@ -13,6 +12,7 @@ use Milpa\Command\Effect\Reversibility;
 use Milpa\Command\Effect\Subject;
 use Milpa\Command\Standing\ConditionReceipt;
 use Milpa\Command\Standing\GrantStanding;
+use Milpa\Command\Standing\GrantState;
 use Milpa\Command\Standing\StandingCall;
 use Milpa\Command\Standing\StandingGrant;
 
@@ -89,21 +89,24 @@ final class Grants
     /** @param array<string, mixed> $arguments */
     public static function receipt(string $subject = self::CANDIDATE, bool $ok = true, string $instrument = self::INSTRUMENT, string $by = 'lab:scan', array $arguments = ['path' => 'candidate.tar']): ConditionReceipt
     {
-        return new ConditionReceipt(new OperationId($by), $arguments, $subject, $ok, $instrument, 'key:' . self::SEAT, self::at('2026-10-11T11:50:00Z'));
+        return new ConditionReceipt($by, $arguments, $subject, $ok, $instrument, 'key:' . self::SEAT, self::at('2026-10-11T11:50:00Z'));
     }
 
     /**
-     * The house as it stands when everything is in order: in force, watched ten minutes ago, the candidate
-     * measured green by today's scanner.
+     * The house as it stands when everything is in order: its signature verified, in force, watched ten minutes
+     * ago, the candidate measured green by today's scanner.
      *
      * @param list<ConditionReceipt>|null $receipts
      */
     public static function standing(?array $receipts = null, ?string $watcherSignalAt = '2026-10-11T11:50:00Z'): GrantStanding
     {
         return new GrantStanding(
+            GrantState::InForce,
+            signatureFault: null,
             watcherSignalAt: $watcherSignalAt === null ? null : self::at($watcherSignalAt),
             receipts: $receipts ?? [self::receipt()],
             instruments: ['lab.scan' => self::INSTRUMENT],
+            recordFault: null,
         );
     }
 }

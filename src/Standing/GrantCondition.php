@@ -32,6 +32,11 @@ final readonly class GrantCondition
         if (trim($name) === '' || trim($statement) === '') {
             throw new \InvalidArgumentException('a condition names itself and says what must hold — one without a name or a statement is a claim nobody can check');
         }
+        foreach (['name' => $name, 'statement' => $statement] as $key => $text) {
+            if (!Canonical::oneLine($text)) {
+                throw new \InvalidArgumentException(Canonical::notOneLine("a condition gives «{$key}»", $text));
+            }
+        }
     }
 
     /**
@@ -53,6 +58,8 @@ final readonly class GrantCondition
         Canonical::only($data, ['name', 'statement', 'by'], 'a condition');
         $name = Canonical::text($data, 'name', 'a condition');
 
-        return new self($name, Canonical::text($data, 'statement', "condition «{$name}»"), NamedCall::fromArray($data['by'] ?? null, "condition «{$name}», in «by»,"));
+        $where = 'condition ' . Canonical::shown($name);
+
+        return new self($name, Canonical::text($data, 'statement', $where), NamedCall::fromArray($data['by'] ?? null, "{$where}, in «by»,"));
     }
 }

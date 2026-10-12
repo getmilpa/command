@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Milpa\Command\Tests\Standing;
 
-use Milpa\Command\Consent\OperationId;
 use Milpa\Command\Standing\ConditionReceipt;
 use PHPUnit\Framework\TestCase;
 
@@ -28,7 +27,7 @@ final class AConditionReceiptBindsContentAndInstrumentTest extends TestCase
     {
         foreach ([[' ', Grants::INSTRUMENT], [Grants::CANDIDATE, '']] as [$subject, $instrument]) {
             try {
-                new ConditionReceipt(new OperationId('lab:scan'), [], $subject, true, $instrument, null, Grants::at());
+                new ConditionReceipt('lab:scan', [], $subject, true, $instrument, null, Grants::at());
                 self::fail('a receipt bound to nothing was written');
             } catch (\InvalidArgumentException $error) {
                 self::assertStringContainsString('binds nothing', $error->getMessage());

@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Milpa\Command\Effect;
 
 use Milpa\Command\Consent\OperationId;
+use Milpa\Command\Standing\Canonical;
 
 /**
  * What an operation can do at WORST — the upper bound, declared by the operation itself.
@@ -54,6 +55,15 @@ use Milpa\Command\Consent\OperationId;
 final class EffectProfile
 {
     /**
+     * The rollback contract, when reversibility claims to be `Guaranteed`.
+     *
+     * Required for that one level and for no other, because `Guaranteed` is the only claim that
+     * buys the operation LESS scrutiny. A claim that lowers controls has to name the artifact
+     * that backs it, or it is exactly the self-certification GOV-00 exists to forbid.
+     */
+    public readonly ?string $rollbackContract;
+
+    /**
      * @param list<string> $escalatesOn argument names whose value can RAISE this ceiling — declared
      *                                  so a caller knows which unresolved argument is the one that
      *                                  keeps the profile pinned at its worst
@@ -73,13 +83,15 @@ final class EffectProfile
          */
         public readonly Subject $subject = Subject::Unknown,
         /**
-         * The rollback contract, when reversibility claims to be `Guaranteed`.
+         * The rollback contract ({@see self::$rollbackContract}): text, or `null`.
          *
-         * Required for that one level and for no other, because `Guaranteed` is the only claim that
-         * buys the operation LESS scrutiny. A claim that lowers controls has to name the artifact
-         * that backs it, or it is exactly the self-certification GOV-00 exists to forbid.
+         * THE TYPE IS ASKED HERE, NOT LEFT TO THE CALLER'S FILE (greenhouse decisions/0615, a ninth review).
+         * A standing grant holds the inverse its ceiling names to «the name of one operation, as it reads», and
+         * it reads it from here. From PHP's default mode an `OperationId` — it is `Stringable` — turned itself
+         * into text before this constructor looked: an identity built elsewhere, its ends already taken off.
+         * Anything but a text or `null` is a `TypeError` for every caller.
          */
-        public readonly ?string $rollbackContract = null,
+        mixed $rollbackContract = null,
         /**
          * Arguments that LOWER this ceiling for one call — the dangerous direction (decisions/0029).
          *
@@ -91,6 +103,11 @@ final class EffectProfile
          */
         public readonly array $descents = [],
     ) {
+        if ($rollbackContract !== null && !\is_string($rollbackContract)) {
+            throw new \TypeError(\sprintf('the rollback contract of an effect profile is given as text; got %s', get_debug_type($rollbackContract)));
+        }
+        $this->rollbackContract = $rollbackContract;
+
         // A READ HAS NO SUBJECT, AND SAYING OTHERWISE IS IMPOSSIBLE RATHER THAN MERELY WRONG.
         //
         // Four blind judges classified thirty-three operations from the definition alone, and every
@@ -151,12 +168,12 @@ final class EffectProfile
         // one profile, and it is asked where the table exists.
         if ($reversibility === Reversibility::Guaranteed && !self::namesAnOperation((string) $rollbackContract)) {
             throw new \InvalidArgumentException(\sprintf(
-                'the rollback contract «%s» describes an inverse instead of naming one: reversibility '
+                'the rollback contract %s describes an inverse instead of naming one: reversibility '
                 . '«guaranteed» must name the operation that undoes this (e.g. «plugins.disable»), '
                 . 'because prose cannot be run, cannot be checked, and cannot be put through a gate. '
                 . 'An operation whose inverse is not an operation is not guaranteed — declare what it '
                 . 'really is.',
-                $rollbackContract,
+                Canonical::shown($rollbackContract),
             ));
         }
     }
@@ -170,7 +187,7 @@ final class EffectProfile
      */
     private static function namesAnOperation(string $contract): bool
     {
-        return preg_match('/^[a-z0-9]+(?:[-][a-z0-9]+)*(?:\.[a-z0-9]+(?:[-][a-z0-9]+)*)*$/', OperationId::canonizar($contract)) === 1;
+        return preg_match('/^[a-z0-9]+(?:[-][a-z0-9]+)*(?:\.[a-z0-9]+(?:[-][a-z0-9]+)*)*$/D', OperationId::canonizar($contract)) === 1;
     }
 
     /**
@@ -391,8 +408,8 @@ final class EffectProfile
         foreach (array_keys($axes) as $key) {
             if (!\in_array($key, $known, true)) {
                 throw new \InvalidArgumentException(sprintf(
-                    '«%s» is not an effect axis (%s): changing it is a new proposal, not a tightening — use a counter',
-                    (string) $key,
+                    '%s is not an effect axis (%s): changing it is a new proposal, not a tightening — use a counter',
+                    Canonical::shown((string) $key),
                     implode(', ', $known),
                 ));
             }
@@ -405,7 +422,7 @@ final class EffectProfile
             $raw = $axes[$axis];
             $case = \is_string($raw) ? $enum::tryFrom($raw) : null;
             if ($case === null) {
-                throw new \InvalidArgumentException(sprintf('%s is not a level of %s', json_encode($raw) ?: get_debug_type($raw), $axis));
+                throw new \InvalidArgumentException(sprintf('%s is not a level of %s', Canonical::shown($raw), $axis));
             }
 
             return $case;
@@ -456,7 +473,7 @@ final class EffectProfile
             $raw = $data[$key] ?? null;
             $case = \is_string($raw) ? $enum::tryFrom($raw) : null;
             if ($case === null) {
-                throw new \InvalidArgumentException(sprintf('a stored profile needs a valid «%s»; got %s', $key, json_encode($raw) ?: get_debug_type($raw)));
+                throw new \InvalidArgumentException(sprintf('a stored profile needs a valid «%s»; got %s', $key, Canonical::shown($raw)));
             }
 
             return $case;

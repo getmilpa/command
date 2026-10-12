@@ -33,8 +33,13 @@ final readonly class Falsifier
         if (trim($name) === '' || trim($statement) === '') {
             throw new \InvalidArgumentException('a falsifier names itself and says what would show the grant wrong');
         }
+        foreach (['name' => $name, 'statement' => $statement] as $key => $text) {
+            if (!Canonical::oneLine($text)) {
+                throw new \InvalidArgumentException(Canonical::notOneLine("a falsifier gives «{$key}»", $text));
+            }
+        }
         if ($withinSeconds < 1) {
-            throw new \InvalidArgumentException("falsifier «{$name}» needs «within_seconds»: how recently its watcher must have given a sign of life, as a whole number of seconds above zero");
+            throw new \InvalidArgumentException('falsifier ' . Canonical::shown($name) . ' needs «within_seconds»: how recently its watcher must have given a sign of life, as a whole number of seconds above zero');
         }
     }
 
@@ -61,10 +66,12 @@ final readonly class Falsifier
         $name = Canonical::text($data, 'name', 'the falsifier');
         $within = $data['within_seconds'] ?? null;
 
+        $where = 'falsifier ' . Canonical::shown($name);
+
         return new self(
             $name,
-            Canonical::text($data, 'statement', "falsifier «{$name}»"),
-            NamedCall::fromArray($data['watcher'] ?? null, "falsifier «{$name}», in «watcher»,"),
+            Canonical::text($data, 'statement', $where),
+            NamedCall::fromArray($data['watcher'] ?? null, "{$where}, in «watcher»,"),
             \is_int($within) ? $within : 0,
         );
     }

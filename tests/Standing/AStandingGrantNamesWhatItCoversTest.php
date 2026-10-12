@@ -79,6 +79,33 @@ final class AStandingGrantNamesWhatItCoversTest extends TestCase
         self::assertSame('the-one-before', $grant->supersedes);
     }
 
+    /** @return iterable<string, array{string, string}> */
+    public static function theFormsAnExpiryIsWrittenIn(): iterable
+    {
+        yield 'in UTC, as the grant itself writes it' => ['2026-12-31T00:00:00Z', '2026-12-31T00:00:00Z'];
+        yield 'with an offset of zero' => ['2026-12-31T00:00:00+00:00', '2026-12-31T00:00:00Z'];
+        yield 'west of UTC' => ['2026-12-31T18:00:00-06:00', '2027-01-01T00:00:00Z'];
+        yield 'east of UTC, by a quarter of an hour' => ['2026-12-31T05:45:00+05:45', '2026-12-31T00:00:00Z'];
+        yield 'the last second of a leap day' => ['2028-02-29T23:59:59Z', '2028-02-29T23:59:59Z'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('theFormsAnExpiryIsWrittenIn')]
+    public function testAnExpiryIsOneInstantWhenItIsWrittenAndTheSameOneWheneverItIsRead(string $written, string $instant): void
+    {
+        $grant = Grants::grant(['expires_at' => $written]);
+
+        self::assertSame($instant, $grant->toArray()['expires_at']);
+        // Read again later, in a process that keeps another clock and another zone: the same grant.
+        $zone = date_default_timezone_get();
+        date_default_timezone_set('Pacific/Kiritimati');
+        try {
+            self::assertSame($grant->digest(), Grants::grant(['expires_at' => $written])->digest());
+            self::assertSame($grant->digest(), StandingGrant::fromJson($grant->canonical())->digest());
+        } finally {
+            date_default_timezone_set($zone);
+        }
+    }
+
     public function testItReadsBackWhatItWrote(): void
     {
         $grant = Grants::grant(['expires_at' => '2026-12-31T00:00:00Z']);
