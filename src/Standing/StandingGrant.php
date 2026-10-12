@@ -402,7 +402,9 @@ final readonly class StandingGrant
      * the text was never a grant or was one under an earlier version of this contract: a host that keeps signed
      * documents and reads them again with a later contract cannot tell the two apart here. So such a host treats a
      * document it kept and can no longer read as a FAULT of its record — never as a grant that is not there, which
-     * would bring back whatever that grant had replaced or stopped.
+     * would bring back whatever that grant had replaced or stopped. And it says so to the judge: such a document is
+     * no grant it can hand in, so the fault is the third thing {@see StandingJudge::among()} asks for, and with it
+     * nothing is lent to any seat.
      *
      * A text longer than {@see self::LONGEST} bytes is refused before it is read.
      */

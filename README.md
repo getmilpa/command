@@ -194,7 +194,7 @@ verdict:
 | # | Check | Refuses when |
 |---|-------|--------------|
 | 1 | `Named` | the grant does not name this operation, these arguments and this seat — the call is then judged as it was before any grant existed |
-| 2 | `Signature` | the grant's signature does not hold *now*, or what the host keeps of the grant does not read whole — and a host that does not say it verified the one and read the other is read as one that did neither |
+| 2 | `Signature` | the grant's signature does not hold *now*, or what the host keeps of the grant does not read whole — its list of receipts holding something that is not a receipt among the ways — and a host that does not say it verified the one and read the other is read as one that did neither |
 | 3 | `InForce` | it is suspended, superseded, revoked, or past its own date |
 | 4 | `Watched` | the operation watching its falsifier gave no sign of life within its window |
 | 5 | `Subject` | the operation cannot say what content this call acts on |
@@ -221,8 +221,16 @@ forgets any of the three lends nothing.
 A house may hold several grants that name the same call. `StandingJudge::among()` says which
 answer stands, and **shrinking wins**: a grant that names the call and is suspended refuses it,
 whatever another grant would lend — until a person lifts that suspension or gives a grant that
-supersedes it by name. Expired, revoked and superseded grants stop nobody. Otherwise one grant that
-passes is enough, and when none does, the refusal that got furthest speaks.
+supersedes it by name. So does a grant that names the call and **whose record does not read whole**
+(`recordFault`): the line that cannot be read may be the one that stopped it, and a stop that cannot
+be read is not "no stop". Expired, revoked and superseded grants stop nobody. Otherwise one grant
+that passes is enough, and when none does, the refusal that got furthest speaks.
+
+**`among()` asks a third thing, and it has no default: whether everything the host keeps of standing
+grants reads.** A document a host kept and can no longer read is no grant it can hand in, and it may
+be the one that names this call, stopped; so may a line it cannot attribute to one grant. The host
+says `null` when its whole record reads and the reason when it does not — and then **nothing is lent
+to any seat**, whatever grants were handed in: the answer carries no grant, and it is never `null`.
 
 Some documents cannot be written at all. `StandingGrant` refuses, at construction: a ceiling with an
 unclassified axis, a ceiling above `compensatable`, a ceiling whose **authority** is above
@@ -239,6 +247,10 @@ a grant put together by hand reads back from its own spelling.
 - it says each thing **once** — a key said twice in one object is refused, at every depth, however
   it is spelled (a reader of JSON would take the last one and never mention the first);
 - a list is written as a list — never as an object with the keys `"0"`, `"1"`;
+- **proposed, not decided** (the sixth review, L5): it spells a plain character plainly — a `\u`
+  escape that names a printable ASCII character other than the quote and the backslash is refused. A
+  text is read after its escapes are, so an operation written entirely in escapes was shown as
+  escapes and read as its name;
 - it is **at most 256 KB long** (`StandingGrant::LONGEST`): a longer text is refused before a byte of
   it is read — a grant is a page a person reads before signing it;
 - **nothing is taken off the ends of a text.** A reader that trims repairs: the document a person
@@ -269,7 +281,7 @@ punctuation and symbols, and the ordinary space (U+0020) inside it. **What it re
 | the line and the paragraph separator | U+2028, U+2029 |
 | every space that is not U+0020 (`Zs`) | U+00A0, U+1680, U+2000–U+200A, U+202F, U+205F, U+3000 |
 | variation selectors, and the combining grapheme joiner | U+180B–U+180D, U+180F, U+FE00–U+FE0F, U+E0100–U+E01EF; U+034F |
-| vowels and fillers that print as nothing | U+17B4, U+17B5 (the Khmer inherent vowels); U+115F, U+1160, U+3164, U+FFA0, U+2800 |
+| vowels and fillers that print as nothing | U+17B4, U+17B5 (the Khmer inherent vowels); U+115F, U+1160, U+3164, U+FFA0, U+2800; U+13441, U+13442 (the full and the half blank of Egyptian hieroglyphs), U+16FE4 (the Khitan small script filler), U+1D159 (the musical null notehead) |
 | private use (`Co`), unassigned (`Cn`, the noncharacters and the rest of the tag block among them) | by category |
 | bytes that are not text | anything that is not UTF-8 — a surrogate among them |
 | a space at either end | U+0020 first or last |
@@ -282,8 +294,16 @@ tables refuses a letter added since.
 
 **The rule behind the list: no code point Unicode itself says is shown as nothing is taken** — its
 property `Default_Ignorable_Code_Point`. The table covers that whole set, and a test asks every code
-point there is. Of the 1,112,064, this reader refuses 957,522. What it does not promise is that two
-texts that look the same are one: a letter of another alphabet that looks the same is text.
+point there is — of the list alone, too. Where the PCRE knows the property by name (10.40 and later)
+the pattern names it beside the list, so that a character added to that set is refused the day a
+house runs on tables that know it. The fillers are not of that set, and are named one by one. Of the
+1,112,064 code points, this reader refuses 957,526. What it does not promise is that two texts that
+look the same are one: a letter of another alphabet that looks the same is text.
+
+**Proposed, not decided** (the sixth review, L2): a text that **begins with a combining mark**, or
+carries **more than eight of them in a row**, is refused too. Ordinary writing stacks few — two in
+Vietnamese, three in Thai, four or five in pointed Hebrew — and three hundred on one letter are
+drawn over the lines around it.
 
 `fromArray()` reads a document already in an array, and cannot see a key said twice: the array holds
 the last one only.
@@ -316,8 +336,8 @@ That is for what speaks **for** a condition. A receipt that says **no** counts f
 | about another content, or by another operation | says nothing of this condition |
 
 An argument is **fixed to a value a person can read, and no other**: text that is visible ASCII —
-the characters from `!` to `~`, single spaces inside, none around — a whole number, or true or
-false. A fixed value is compared byte by byte with what a caller sends, so a value that reads
+the characters from `!` to `~`, at least one of them, single spaces inside, none around — a whole
+number, or true or false. Never the empty text: `channel=` and no `channel` at all read alike. A fixed value is compared byte by byte with what a caller sends, so a value that reads
 `strict` and carries a zero-width space is another run. What that costs: an argument cannot be fixed
 to a value with an accent or a letter of another alphabet. A host that lists a grant, or asks a
 person to sign one, shows a fixed value through `Canonical::shown()`.
@@ -349,8 +369,11 @@ as a **fault of its record** — never as a grant that is not there, or a measur
 taken: the first would bring back whatever that grant had replaced or stopped, and the second would
 leave the green receipt before a red one speaking. It says so to the judge in
 `GrantStanding::$recordFault`, and the judge refuses on it. `ConditionReceipt::fromArray()` answers
-`null` for a line that is not a receipt — one whose `by` names no operation among them — and `null`
-is that fault, not "nothing was measured".
+`null` for a line that is not a receipt — one whose `by` names no operation, or whose digests are
+not as they read (a space or a line break around one) — and `null` is that fault, not "nothing was
+measured". The judge does not skip it either: anything in the list of receipts that is not a receipt
+refuses the call. What a host cannot attribute to one grant, it says for the whole record, in
+`among()`.
 
 **What it cannot say: money.** There is no effect axis for it, so no ceiling bounds what a call
 spends, and nothing in an operation's declaration says that it spends. "Do not grant over an

@@ -39,12 +39,13 @@ use Milpa\Command\Consent\OperationId;
  * else — the characters from `!` to `~`, single spaces inside it, none around it. A fixed value is compared byte
  * by byte with what a caller sends, so a value that reads «strict» and is «strict» with a zero-width space after
  * it is another run: the run a person read may have said no, and the look-alike said yes. What that costs, and was
- * accepted: an argument cannot be fixed to a value with an accent, an ñ, or a letter of another alphabet. A value
- * that is not text — a whole number, true or false — is as it always was.
+ * accepted: an argument cannot be fixed to a value with an accent, an ñ, or a letter of another alphabet — nor to
+ * the empty text, which is no character at all. A value that is not text — a whole number, true or false — is as
+ * it always was.
  *
  * AND WHAT A HOST OWES IT: a host that lists a grant, or asks a person to sign one, shows it to whoever signs
- * through {@see Canonical::shown()} — the value as it is spelled, in quotes, so that nothing and one space are
- * never the same line on a screen.
+ * through {@see Canonical::shown()} — the value as it is spelled, in quotes, so that the word «true» and the
+ * answer true are never the same line on a screen.
  */
 final readonly class NamedCall
 {
@@ -60,8 +61,11 @@ final readonly class NamedCall
      */
     private const ARGUMENT = '/^[A-Za-z][A-Za-z0-9_]{0,63}$/D';
 
-    /** The text an argument is fixed to: visible ASCII, single spaces inside, none around — or nothing at all. */
-    private const VALUE = '/^(?:[\x21-\x7E]+(?: [\x21-\x7E]+)*)?$/D';
+    /**
+     * The text an argument is fixed to: visible ASCII, single spaces inside, none around. Never the empty text:
+     * nothing is not a value a person can read, and on a line `channel=` and no `channel` at all read alike.
+     */
+    private const VALUE = '/^[\x21-\x7E]+(?: [\x21-\x7E]+)*$/D';
 
     /** The identity of one operation: segments of lowercase letters and digits, a dash inside a segment, dots between. */
     private const OPERATION = '/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/D';
@@ -100,7 +104,7 @@ final readonly class NamedCall
             }
             if (\is_string($value) && preg_match(self::VALUE, $value) !== 1) {
                 throw new \InvalidArgumentException(\sprintf(
-                    'the argument «%s» fixed for «%s» is fixed to text a person can read and no other — visible ASCII, single spaces inside, none around: a call is compared with it byte by byte; got %s',
+                    'the argument «%s» fixed for «%s» is fixed to text a person can read and no other — visible ASCII, at least one character, single spaces inside, none around: a call is compared with it byte by byte; got %s',
                     $name,
                     Canonical::short($id->canonical),
                     Canonical::shown($value),

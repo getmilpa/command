@@ -74,6 +74,21 @@ final class StandingJudge
                 Canonical::said($standing->recordFault),
             ));
         }
+        // …AND WHAT IS IN THE LIST OF RECEIPTS AND IS NOT ONE IS A LINE THAT WAS NOT READ. The reader of a line answers
+        // `null` for one it cannot read, and a list built by mapping that reader over the lines holds the `null`:
+        // skipped, a red receipt that no longer reads left the green before it speaking.
+        $receipts = [];
+        foreach ($standing->receipts as $at => $receipt) {
+            if (!$receipt instanceof ConditionReceipt) {
+                return StandingVerdict::refuse(StandingCheck::Signature, 'record_unread', \sprintf(
+                    'Standing grant «%s» names this call and is not honoured: what the house keeps of it does not read whole — entry %d of its receipts is not a receipt (%s). Nothing is lent under it until its record reads again; a line that cannot be read is never read as «nothing happened».',
+                    $id,
+                    (int) $at + 1,
+                    get_debug_type($receipt),
+                ));
+            }
+            $receipts[] = $receipt;
+        }
 
         if ($standing->state !== GrantState::InForce) {
             return StandingVerdict::refuse(StandingCheck::InForce, $standing->state->value, \sprintf(
@@ -145,7 +160,7 @@ final class StandingJudge
             // carried: one more, the fixed one missing or at another value, or none at all. It stops the act until
             // the content is measured again by the run the condition describes. Another content, or another
             // operation, says nothing of this condition.
-            foreach ($standing->receipts as $receipt) {
+            foreach ($receipts as $receipt) {
                 if ($receipt->subject === $call->subject
                     && ($condition->by->matchesExactly($receipt->by, $receipt->arguments) || (!$receipt->ok && $condition->by->operation->is($receipt->by)))) {
                     $last = $receipt;
@@ -200,19 +215,42 @@ final class StandingJudge
      *     What takes a grant out of the way is a person's act that names it — lifting that suspension, or giving
      *     a grant that supersedes it — and a host then no longer reports it as suspended. Expired, revoked and
      *     superseded grants are not suspended: they lend nothing and stop nobody.
+     *   · A grant that names the call and WHOSE RECORD DOES NOT READ WHOLE ({@see GrantStanding::$recordFault})
+     *     refuses it too, whatever another grant would lend: the line that cannot be read may be the one that
+     *     stopped it, and a stop that cannot be read is not «no stop». A suspension that reads speaks before it.
      *   · Otherwise one grant that passes is enough.
      *   · Otherwise the refusal that got furthest through the seven checks speaks — it is the one the caller is
      *     closest to — and, level with another, the later grant's.
      *
-     * @param list<array{grant: StandingGrant, standing: GrantStanding}> $grants every grant the host holds that may
-     *                                                                           concern the call, in the order they
-     *                                                                           were given
+     * AND THE RECORD AS A WHOLE HAS TO BE SPOKEN FOR (`$recordFault`). Not everything a host can no longer read is
+     * the record of ONE grant it can hand in. A document it kept and can no longer read is no {@see StandingGrant}
+     * at all ({@see StandingGrant::fromJson()}), so it cannot be in the list — and it may be the grant that names
+     * this call, stopped. So may a line it cannot attribute to one grant. A host says here whether everything it
+     * keeps of standing grants reads: `null` when it does, the reason when it does not — and there is no default,
+     * because skipping what cannot be read is the easy thing to do. When it does not read whole, NOTHING IS LENT TO
+     * ANY SEAT, whatever grants were handed in and whether or not one of them names the call: the answer carries no
+     * grant, and it is never `null`. A host that would rather refuse before it asks may; one that asks says it.
      *
-     * @return array{grant: StandingGrant, verdict: StandingVerdict}|null
+     * @param list<array{grant: StandingGrant, standing: GrantStanding}> $grants      every grant the host holds that
+     *                                                                                may concern the call, in the
+     *                                                                                order they were given
+     * @param string|null                                                $recordFault why the host's record of standing
+     *                                                                                grants does not read whole, or
+     *                                                                                `null`: every line and every
+     *                                                                                document it keeps reads
+     *
+     * @return array{grant: StandingGrant|null, verdict: StandingVerdict}|null
      */
-    public static function among(array $grants, StandingCall $call): ?array
+    public static function among(array $grants, StandingCall $call, ?string $recordFault): ?array
     {
+        if ($recordFault !== null) {
+            return ['grant' => null, 'verdict' => StandingVerdict::refuse(StandingCheck::Signature, 'record_unread', \sprintf(
+                'What the house keeps of its standing grants does not read whole — %s. Nothing is lent to any seat until it reads again: a grant that cannot be read may be the one that names this call, and a stop that cannot be read is never read as «no stop».',
+                Canonical::said($recordFault),
+            ))];
+        }
         $suspended = null;
+        $unread = null;
         $passed = null;
         $furthest = null;
         $naming = 0;
@@ -225,6 +263,8 @@ final class StandingJudge
             $answer = ['grant' => $grant, 'verdict' => $verdict];
             if ($standing->state === GrantState::Suspended) {
                 $suspended = $answer;
+            } elseif ($standing->recordFault !== null) {
+                $unread ??= $answer;
             } elseif ($verdict->passes()) {
                 $passed ??= $answer;
             } elseif ($furthest === null || self::reached($verdict) >= self::reached($furthest['verdict'])) {
@@ -245,7 +285,21 @@ final class StandingJudge
             )];
         }
 
-        return $suspended ?? $passed ?? $furthest;
+        // Reached with more than one grant only when no suspension spoke: a stop that reads is said first, above.
+        if ($unread !== null && $naming > 1) {
+            $verdict = $unread['verdict'];
+
+            return ['grant' => $unread['grant'], 'verdict' => StandingVerdict::refuse(
+                $verdict->failed ?? StandingCheck::Signature,
+                $verdict->reason,
+                $verdict->sentence . \sprintf(
+                    ' Another grant names this call too, and it lends nothing while what the house keeps of «%1$s» does not read whole: the line that cannot be read may be the one that stopped it.',
+                    $unread['grant']->id,
+                ),
+            )];
+        }
+
+        return $suspended ?? $unread ?? $passed ?? $furthest;
     }
 
     /** How far through the seven checks a refusal got. */

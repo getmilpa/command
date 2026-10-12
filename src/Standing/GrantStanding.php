@@ -34,13 +34,21 @@ final readonly class GrantStanding
      * NOTHING HERE SAYS «YES» BY DEFAULT. Where the grant stands has to be said; the signature and the record are
      * faulted until the host says they hold. A host that forgets one of the three lends nothing.
      *
-     * @param GrantState              $state           what the ledger derives for the grant now — said by the host, always
+     * @param GrantState              $state           what the ledger derives for the grant now — said by the host, always.
+     *                                                 It still has to be said when the line that would decide it cannot be
+     *                                                 read: the host says what it can still derive, AND the fault, in
+     *                                                 `$recordFault` — the judge refuses on the fault before it looks at
+     *                                                 the state, alone and among other grants
      * @param string|null             $because         for a state other than in force: what put it there and who may lift it, in words
      * @param string|null             $signatureFault  why the grant's signature does not hold NOW — or `null`: it was re-verified and it holds.
      *                                                 A host says which: the default is that nobody verified it,
      *                                                 and a grant nobody verified is not honoured
      * @param \DateTimeImmutable|null $watcherSignalAt the watcher's last sign of life since the grant was given or last reinstated, or `null`: none
-     * @param list<ConditionReceipt>  $receipts        every receipt the host holds, in ledger order — the last one about a content says what is known of it now
+     * @param array<array-key, mixed> $receipts        every receipt the host holds ({@see ConditionReceipt}), in ledger order — the
+     *                                                 last one about a content says what is known of it now. Receipts
+     *                                                 and nothing else, and it is the judge that holds the list to
+     *                                                 that: what is in it and is not one — the `null` a reader answered
+     *                                                 for a line — is refused on, never skipped
      * @param array<string, string>   $instruments     operation (canonical id) => its instrument digest today
      * @param string|null             $recordFault     why what the host keeps of this grant cannot be trusted whole — a line it
      *                                                 wrote as a receipt, a sign of the watcher or a stop, and can no longer

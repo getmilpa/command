@@ -51,6 +51,14 @@ final readonly class ConditionReceipt
         if (trim($subject) === '' || trim($instrument) === '') {
             throw new \InvalidArgumentException('a condition receipt is bound to the digest of what was measured and to the digest of what measured it; one without either binds nothing');
         }
+        // NOTHING IS TRIMMED HERE EITHER. The judge joins a receipt to an act by the text of these two digests: one
+        // with a line break after it is another text, and a red receipt spelled that way said nothing of the content
+        // it measured — the green before it went on speaking.
+        foreach (['the content that was measured' => $subject, 'what measured it' => $instrument] as $which => $digest) {
+            if (!Canonical::oneLine($digest)) {
+                throw new \InvalidArgumentException(Canonical::notOneLine("a condition receipt gives the digest of {$which}", $digest));
+            }
+        }
         if (NamedCall::named($by) === null) {
             throw new \InvalidArgumentException('a condition receipt says which operation measured, by its name; got ' . Canonical::shown($by->canonical));
         }
@@ -89,6 +97,13 @@ final readonly class ConditionReceipt
      * read as not having checked. The `at` of a receipt is for the reader of the record and is read loosely; the
      * judge joins by content, not by clock.
      *
+     * `null` IS NOT A RECEIPT, AND THE JUDGE DOES NOT SKIP IT. A host that builds its list with
+     * `array_map(ConditionReceipt::fromArray(...), $lines)` hands the judge that `null`, and the judge refuses on it
+     * ({@see StandingJudge::judge()}): anything in the list that is not a receipt is a line that was not read.
+     *
+     * A line whose digests are not as they read — a space or a line break around one, a character nobody sees in
+     * one — is not a receipt either: nothing is trimmed, and the judge compares them as text.
+     *
      * A line whose `by` does not name one operation is not a receipt: it would be matched against no condition and
      * no instrument, and a red one kept that way stops speaking.
      *
@@ -99,7 +114,8 @@ final readonly class ConditionReceipt
         $at = \is_string($data['at'] ?? null) ? date_create_immutable($data['at']) : false;
         if (!\is_string($data['by'] ?? null) || !\is_array($data['arguments'] ?? null) || !\is_string($data['subject'] ?? null)
             || !\is_bool($data['ok'] ?? null) || !\is_string($data['instrument'] ?? null) || $at === false
-            || trim($data['subject']) === '' || trim($data['instrument']) === '') {
+            || trim($data['subject']) === '' || trim($data['instrument']) === ''
+            || !Canonical::oneLine($data['subject']) || !Canonical::oneLine($data['instrument'])) {
             return null;
         }
         $by = NamedCall::named($data['by']);

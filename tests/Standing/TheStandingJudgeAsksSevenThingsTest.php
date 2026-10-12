@@ -265,7 +265,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
     public function testAmongSeveralGrantsOneThatPassesIsEnough(): void
     {
         $unmeasured = self::held('asks-more', change: ['conditions' => [['name' => 'builds', 'statement' => 'it builds', 'by' => ['operation' => 'lab:build', 'free' => ['path']]]]]);
-        $answer = StandingJudge::among([$unmeasured, self::held('first-that-passes'), self::held('also-passes')], Grants::call());
+        $answer = StandingJudge::among([$unmeasured, self::held('first-that-passes'), self::held('also-passes')], Grants::call(), null);
 
         self::assertNotNull($answer);
         self::assertTrue($answer['verdict']->passes());
@@ -274,8 +274,8 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
 
     public function testNoGrantThatNamesTheCallIsNoAnswerAtAll(): void
     {
-        self::assertNull(StandingJudge::among([], Grants::call()));
-        self::assertNull(StandingJudge::among([self::held('for-another-seat'), self::held('suspended-for-another-seat', self::suspended())], Grants::call(seat: 'ANOTHER-SEAT')));
+        self::assertNull(StandingJudge::among([], Grants::call(), null));
+        self::assertNull(StandingJudge::among([self::held('for-another-seat'), self::held('suspended-for-another-seat', self::suspended())], Grants::call(seat: 'ANOTHER-SEAT'), null));
     }
 
     public function testASuspendedGrantThatNamesTheCallRefusesItWhateverAnotherWouldLend(): void
@@ -284,7 +284,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
         foreach ([[self::held('stopped', self::suspended()), self::held('would-lend')], [self::held('would-lend'), self::held('stopped', self::suspended())]] as $grants) {
             self::assertTrue(StandingJudge::judge($grants[0]['grant'], Grants::standing(), Grants::call())->passes(), 'control: alone and in force, each of them lends');
 
-            $answer = StandingJudge::among($grants, Grants::call());
+            $answer = StandingJudge::among($grants, Grants::call(), null);
 
             self::assertNotNull($answer);
             self::assertFalse($answer['verdict']->passes());
@@ -300,7 +300,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
     public function testASuspendedGrantSpeaksEvenWhenAnotherRefusalGotFurther(): void
     {
         // The caller could measure its candidate, and it would change nothing: the suspension is what decides.
-        $answer = StandingJudge::among([self::held('stopped', self::suspended()), self::held('unmeasured', Grants::standing([]))], Grants::call());
+        $answer = StandingJudge::among([self::held('stopped', self::suspended()), self::held('unmeasured', Grants::standing([]))], Grants::call(), null);
 
         self::assertSame('stopped', $answer['grant']->id ?? null);
         self::assertSame('suspended', $answer['verdict']->reason ?? null);
@@ -308,7 +308,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
 
     public function testASuspendedGrantAloneSaysOnlyWhatItSaidBefore(): void
     {
-        $alone = StandingJudge::among([self::held('stopped', self::suspended())], Grants::call());
+        $alone = StandingJudge::among([self::held('stopped', self::suspended())], Grants::call(), null);
         $judged = StandingJudge::judge(Grants::grant(['id' => 'stopped']), self::suspended(), Grants::call());
 
         self::assertSame($judged->sentence, $alone['verdict']->sentence ?? null);
@@ -318,7 +318,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
     public function testASuspendedGrantWhoseSignatureDoesNotHoldStillStopsTheCall(): void
     {
         $broken = new GrantStanding(GrantState::Suspended, 'stopped', signatureFault: 'the key that signed it no longer holds the word');
-        $answer = StandingJudge::among([self::held('stopped', $broken), self::held('would-lend')], Grants::call());
+        $answer = StandingJudge::among([self::held('stopped', $broken), self::held('would-lend')], Grants::call(), null);
 
         self::assertFalse($answer['verdict']->passes() ?? true);
         self::assertSame(StandingCheck::Signature, $answer['verdict']->failed ?? null);
@@ -328,7 +328,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
     public function testASuspendedGrantThatDoesNotNameTheCallStopsNothing(): void
     {
         $elsewhere = self::held('stopped', self::suspended(), ['covers' => [['operation' => 'lab:publish', 'arguments' => ['channel' => 'beta']]]]);
-        $answer = StandingJudge::among([$elsewhere, self::held('would-lend')], Grants::call());
+        $answer = StandingJudge::among([$elsewhere, self::held('would-lend')], Grants::call(), null);
 
         self::assertTrue($answer['verdict']->passes() ?? false);
         self::assertSame('would-lend', $answer['grant']->id ?? null);
@@ -342,12 +342,12 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
             self::held('expired', change: ['expires_at' => '2026-10-11T00:00:00Z']),
         ];
 
-        $answer = StandingJudge::among([...$gone, self::held('would-lend')], Grants::call());
+        $answer = StandingJudge::among([...$gone, self::held('would-lend')], Grants::call(), null);
         self::assertTrue($answer['verdict']->passes() ?? false);
         self::assertSame('would-lend', $answer['grant']->id ?? null);
 
         // And with nothing left that lends, they refuse — each as what it is, the later one speaking.
-        self::assertSame('expired', StandingJudge::among($gone, Grants::call())['verdict']->reason ?? null);
+        self::assertSame('expired', StandingJudge::among($gone, Grants::call(), null)['verdict']->reason ?? null);
     }
 
     public function testWhenNoneLendsTheRefusalThatGotFurthestSpeaksWhicheverWasGivenFirst(): void
@@ -356,7 +356,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
         $unmeasured = self::held('unmeasured', Grants::standing([]));
 
         foreach ([[$unwatched, $unmeasured], [$unmeasured, $unwatched]] as $grants) {
-            $answer = StandingJudge::among($grants, Grants::call());
+            $answer = StandingJudge::among($grants, Grants::call(), null);
 
             self::assertSame('unmeasured', $answer['grant']->id ?? null, 'the one the caller can do something about');
             self::assertSame(StandingCheck::Conditions, $answer['verdict']->failed ?? null);
@@ -365,7 +365,7 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
 
     public function testLevelWithAnotherTheLaterGrantSpeaks(): void
     {
-        $answer = StandingJudge::among([self::held('older', new GrantStanding(GrantState::Superseded, signatureFault: null, recordFault: null)), self::held('newer', change: ['expires_at' => '2026-10-11T00:00:00Z'])], Grants::call());
+        $answer = StandingJudge::among([self::held('older', new GrantStanding(GrantState::Superseded, signatureFault: null, recordFault: null)), self::held('newer', change: ['expires_at' => '2026-10-11T00:00:00Z'])], Grants::call(), null);
 
         self::assertSame('newer', $answer['grant']->id ?? null);
         self::assertSame('expired', $answer['verdict']->reason ?? null);

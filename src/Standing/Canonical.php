@@ -56,10 +56,24 @@ final class Canonical
      * no spelling for one, so it arrives as bytes that are not text, and those match nothing and are refused for that.
      *
      * Together they leave out NO code point Unicode calls `Default_Ignorable_Code_Point`. That property is the rule,
-     * and a test asks every code point there is for it. It is not written here as `\p{DI}` only because a PCRE older
-     * than 10.40 does not know that name, and a pattern that does not compile refuses every text there is.
+     * and a test asks every code point there is for it — of this list ALONE too. The name of the property is added
+     * to the list where the PCRE knows it ({@see self::unseen()}); it cannot stand in for the list, because a PCRE
+     * older than 10.40 does not know the name, and a pattern that does not compile refuses every text there is.
+     *
+     * This is the class of characters, still open: what closes it is put after it.
      */
-    private const UNSEEN = '/[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\x{034F}\x{180B}-\x{180F}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}\x{17B4}\x{17B5}\x{115F}\x{1160}\x{3164}\x{FFA0}\x{2800}]|(?! )\p{Zs}/u';
+    private const UNSEEN = '[\p{Cc}\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}\x{034F}\x{180B}-\x{180F}\x{FE00}-\x{FE0F}\x{E0100}-\x{E01EF}\x{17B4}\x{17B5}\x{115F}\x{1160}\x{3164}\x{FFA0}\x{2800}\x{13441}\x{13442}\x{16FE4}\x{1D159}';
+
+    /**
+     * PROPOSED, NOT DECIDED (the sixth review, L2; greenhouse decisions/0615): a text does not begin with a combining
+     * mark, and carries no more than eight of them in a row.
+     *
+     * Every mark is text, in any number and anywhere: a letter under three hundred stacked marks is drawn over the
+     * lines above and below it wherever glyphs are not clipped, and a mark with nothing before it sits on whatever a
+     * host printed just before the text — its own label, its opening quote. Ordinary writing stacks few: Vietnamese
+     * two, Thai three, pointed Hebrew four or five. To take the proposal out: this constant, and where it is used.
+     */
+    private const MARKS = '^\p{M}|\p{M}{9}';
 
     /**
      * The canonical bytes of a structure.
@@ -105,6 +119,19 @@ final class Canonical
             if ($byte === '"') {
                 $from = $at;
                 for (++$at; $json[$at] !== '"'; ++$at) {
+                    // PROPOSED, NOT DECIDED (the sixth review, L5; greenhouse decisions/0615): what a person signs
+                    // spells a plain character plainly. A text is read after its escapes are, so `lab:` followed by
+                    // seven `\u00..` groups was shown as escapes and read as `lab:publish`, with the digest of the
+                    // plain text. No text a grant keeps needs such an escape, and no writer makes one. To take the
+                    // proposal out: this `if`, and {@see self::spellsAPlainCharacter()}.
+                    if ($json[$at] === '\\' && $json[$at + 1] === 'u' && self::spellsAPlainCharacter(substr($json, $at + 2, 4))) {
+                        throw new \InvalidArgumentException(\sprintf(
+                            '%s writes %s as an escape (\\u%s): what a person signs spells a plain character plainly — a reader would show the escape and read the character',
+                            $where,
+                            self::shown(\chr((int) hexdec(substr($json, $at + 2, 4)))),
+                            strtolower(substr($json, $at + 2, 4)),
+                        ));
+                    }
                     $at += $json[$at] === '\\' ? 1 : 0;
                 }
                 $text = substr($json, $from, $at - $from + 1);
@@ -134,6 +161,18 @@ final class Canonical
                 }
             }
         }
+    }
+
+    /**
+     * PROPOSED, NOT DECIDED ({@see self::saidOnce()}): whether four hexadecimal digits name a printable ASCII
+     * character a text can say as itself — every one from the space to the tilde but the quote and the backslash,
+     * which a JSON text can only say as an escape.
+     */
+    private static function spellsAPlainCharacter(string $hex): bool
+    {
+        $code = (int) hexdec($hex);
+
+        return $code >= 0x20 && $code <= 0x7E && $code !== 0x22 && $code !== 0x5C;
     }
 
     /**
@@ -271,11 +310,16 @@ final class Canonical
      *   · a variation selector (U+180B–U+180D, U+180F, U+FE00–U+FE0F, U+E0100–U+E01EF) and the combining grapheme
      *     joiner (U+034F);
      *   · a vowel or a filler that prints as nothing: U+17B4, U+17B5 (the Khmer inherent vowels), U+115F, U+1160,
-     *     U+3164, U+FFA0, U+2800;
+     *     U+3164, U+FFA0, U+2800, and four that are blank by their own definition — U+13441 and U+13442 (the full and
+     *     the half blank of Egyptian hieroglyphs), U+16FE4 (the Khitan small script filler), U+1D159 (the musical
+     *     null notehead);
      *   · a private-use character (Co), a place nothing is assigned to (Cn — the noncharacters and the rest of the
      *     tag block among them), and bytes that are not text at all — a surrogate among them, which UTF-8 does not
      *     spell;
      *   · and a SPACE AT EITHER END: a text is given as it reads, and nothing trims it.
+     *
+     * PROPOSED, NOT DECIDED ({@see self::MARKS}): a text that begins with a combining mark, or carries more than
+     * eight of them in a row, is refused too.
      *
      * WHAT THAT COSTS, and was accepted: a no-break space, a soft hyphen, a zero-width joiner or non-joiner and a
      * variation selector are part of how some languages and some emoji are written, and a text that needs one is
@@ -287,14 +331,39 @@ final class Canonical
      * everywhere.
      *
      * THE RULE BEHIND THE LIST: no code point Unicode itself says is shown as nothing — its property
-     * `Default_Ignorable_Code_Point` — is taken. The list above covers that whole set, and more.
+     * `Default_Ignorable_Code_Point` — is taken. The list above covers that whole set, and more; the fillers are
+     * not of that set, and are named one by one.
      *
-     * WHAT THIS IS NOT: a promise that two texts that look the same are one. A mark that stacks on a letter, or a
-     * letter of another alphabet that looks the same, is text.
+     * WHAT THIS IS NOT: a promise that two texts that look the same are one. A letter of another alphabet that looks
+     * the same is text, and so is a mark that draws nothing of its own after a letter of another script.
      */
     public static function oneLine(string $text): bool
     {
-        return preg_match(self::UNSEEN, $text) === 0 && !str_starts_with($text, ' ') && !str_ends_with($text, ' ');
+        return preg_match(self::unseen(), $text) === 0 && !str_starts_with($text, ' ') && !str_ends_with($text, ' ');
+    }
+
+    /**
+     * The pattern that finds what one line of plain text never carries: the list, and — where this PCRE knows its
+     * name — Unicode's own property for «shown as nothing» beside it.
+     *
+     * The list alone leaves out no code point of that property under the tables it was written against. The property
+     * is there for the tables that come later: a character added to the set is refused the day a house runs on a
+     * PCRE that knows it, not the day this package is read again.
+     *
+     * @param bool|null $byProperty whether to name the property; `null` asks this PCRE whether it knows it
+     */
+    private static function unseen(?bool $byProperty = null): string
+    {
+        static $known = null;
+        $byProperty ??= $known ??= self::knows('DI');
+
+        return '/' . self::UNSEEN . ($byProperty ? '\p{DI}' : '') . ']|(?! )\p{Zs}|' . self::MARKS . '/u';
+    }
+
+    /** Whether the PCRE this runs on knows a Unicode property by that name: one it does not is a pattern that does not compile. */
+    private static function knows(string $property): bool
+    {
+        return @preg_match('/\p{' . $property . '}/u', '') !== false;
     }
 
     /** What a refusal says of a text that is not one line of plain text; `$what` names it, as «X gives «key»». */

@@ -130,9 +130,12 @@ final class WhatAFifthReviewFoundInTheContractTest extends TestCase
 
     public function testWhatAFixedValueMayStillBe(): void
     {
-        foreach (['strict', 'very strict', 'a b c', 'v1.2.3-rc.1', 'refs/heads/main', '~!@#$%^&*()_+{}|:"<>?', ''] as $value) {
+        foreach (['strict', 'very strict', 'a b c', 'v1.2.3-rc.1', 'refs/heads/main', '~!@#$%^&*()_+{}|:"<>?', '!'] as $value) {
             self::assertSame($value, Grants::grant(self::measuredBy($value))->conditions[0]->by->arguments['mode']);
         }
+        // The empty text was in that list, and this test pinned it as a value an argument may be fixed to. It is not
+        // (the sixth review, L3): D8 says visible ASCII, and nothing is no character at all.
+        self::assertTrue(self::refused(self::measuredBy('')));
         // A value that is not text is as it was: a whole number, and true or false.
         self::assertSame(7, Grants::grant(self::measuredBy(7))->conditions[0]->by->arguments['mode']);
         self::assertTrue(Grants::grant(self::measuredBy(true))->conditions[0]->by->arguments['mode']);
@@ -298,7 +301,17 @@ final class WhatAFifthReviewFoundInTheContractTest extends TestCase
     {
         // What a host hands in — or a content names itself with — that a terminal obeys, and then 124 000 bytes.
         foreach (["stopped \u{2014} \x1b[2K\rOK: standing grant \u{ab}release-line\u{bb} is in force.\x1b[8m", 'sha256:' . str_repeat('ab', 62_000)] as $said) {
-            $verdict = $judged($said);
+            try {
+                $verdict = $judged($said);
+            } catch (\InvalidArgumentException $refused) {
+                // A receipt can no longer be BUILT about a content named with what a terminal obeys (the sixth
+                // review: «nothing is trimmed» reaches the digests of a receipt). The sentence is then never said.
+                self::assertFalse(Canonical::oneLine($said));
+                self::assertStringContainsString('a condition receipt gives the digest of the content that was measured', $refused->getMessage());
+                self::assertSafeToRead($refused->getMessage());
+
+                continue;
+            }
 
             self::assertSame($reason, $verdict->passes() ? 'passes' : $verdict->reason);
             self::assertSafeToRead($verdict->sentence);
