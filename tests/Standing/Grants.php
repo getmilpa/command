@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Milpa\Command\Tests\Standing;
 
-use Milpa\Command\Consent\OperationId;
 use Milpa\Command\Effect\Authority;
 use Milpa\Command\Effect\EffectProfile;
 use Milpa\Command\Effect\Externality;
@@ -90,7 +89,7 @@ final class Grants
     /** @param array<string, mixed> $arguments */
     public static function receipt(string $subject = self::CANDIDATE, bool $ok = true, string $instrument = self::INSTRUMENT, string $by = 'lab:scan', array $arguments = ['path' => 'candidate.tar']): ConditionReceipt
     {
-        return new ConditionReceipt(new OperationId($by), $arguments, $subject, $ok, $instrument, 'key:' . self::SEAT, self::at('2026-10-11T11:50:00Z'));
+        return new ConditionReceipt($by, $arguments, $subject, $ok, $instrument, 'key:' . self::SEAT, self::at('2026-10-11T11:50:00Z'));
     }
 
     /**

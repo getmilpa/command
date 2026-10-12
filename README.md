@@ -222,8 +222,9 @@ A house may hold several grants that name the same call. `StandingJudge::among()
 answer stands, and **shrinking wins**: a grant that names the call and is suspended refuses it,
 whatever another grant would lend — until a person lifts that suspension or gives a grant that
 supersedes it by name. So does a grant that names the call and **whose record does not read whole**
-(`recordFault`): the line that cannot be read may be the one that stopped it, and a stop that cannot
-be read is not "no stop". Expired, revoked and superseded grants stop nobody. Otherwise one grant
+— the host said so (`recordFault`), or its list of receipts holds something that is not a receipt:
+the line that cannot be read may be the one that stopped it, and a stop that cannot be read is not
+"no stop". Expired, revoked and superseded grants stop nobody. Otherwise one grant
 that passes is enough, and when none does, the refusal that got furthest speaks.
 
 **`among()` asks a third thing, and it has no default: whether everything the host keeps of standing
@@ -231,6 +232,19 @@ grants reads.** A document a host kept and can no longer read is no grant it can
 be the one that names this call, stopped; so may a line it cannot attribute to one grant. The host
 says `null` when its whole record reads and the reason when it does not — and then **nothing is lent
 to any seat**, whatever grants were handed in: the answer carries no grant, and it is never `null`.
+
+**Proposed, not decided** (the seventh review, M1): **under doubt, a stop stops.** "The grant names
+the call" was made for lending, where being exact fails closed. It also decided which calls a stop
+reaches, and there being exact fails open: a stopped grant fixes `channel` to `stable`, a wider grant
+is in force, and the seat calls with no `channel` at all — the operation's default — so the stopped
+grant "does not name" the call and the wider one lends it. With the proposal, a stopped grant
+(suspended, or its record not read whole) that lends to the seat and covers the operation refuses a
+call another grant would lend, **unless the call says another value for something that entry
+fixes** (`stopped_beside`). Not "another": the argument is not there, or is `null`; and the same
+text once the type is set aside — a number and the text of its digits, a boolean and the texts PHP
+and JSON write it as (`true`: `"1"`, `"true"`; `false`: `"0"`, `""`, `"false"`). Everything else
+says another value: capitals, a space around the value, `07` for 7, "yes" for true, a list. Where no
+other grant would lend, nothing changes.
 
 Some documents cannot be written at all. `StandingGrant` refuses, at construction: a ceiling with an
 unclassified axis, a ceiling above `compensatable`, a ceiling whose **authority** is above
@@ -240,17 +254,23 @@ does not read** — a line the judge would ignore is a limit nobody keeps.
 
 **A grant built in code is held to what a grant read from its text is held to.** Every text, every
 name and the expiry are refused by the constructors for the same reasons the reader refuses them, so
-a grant put together by hand reads back from its own spelling.
+a grant put together by hand reads back from its own spelling. And a name is given **as text**: a
+named call, a receipt and a call are not built from an `OperationId` made elsewhere — an identity has
+already had its ends taken off, and nothing can ask for them back.
 
 **The text a person signs is read with `StandingGrant::fromJson()`**, and it is read as it is shown:
 
 - it says each thing **once** — a key said twice in one object is refused, at every depth, however
   it is spelled (a reader of JSON would take the last one and never mention the first);
 - a list is written as a list — never as an object with the keys `"0"`, `"1"`;
-- **proposed, not decided** (the sixth review, L5): it spells a plain character plainly — a `\u`
-  escape that names a printable ASCII character other than the quote and the backslash is refused. A
-  text is read after its escapes are, so an operation written entirely in escapes was shown as
-  escapes and read as its name;
+- **proposed, not decided** (the sixth review, L5, as the seventh adjusted it): it spells plainly
+  **what names are made of** — a `\u` escape that names a letter, a digit, the colon, the dot, the
+  underscore, the dash or the space is refused. A text is read after its escapes are, so an operation
+  written entirely in escapes was shown as escapes and read as its name. What a writer that is "safe
+  for HTML" escapes is read: the apostrophe, `<`, `>`, `&` (PHP's `JSON_HEX_*`, and Go, Gson and
+  System.Text.Json by default) — none of them can spell a name. The strict alternative, left for
+  whoever decides: refuse the escape of every printable ASCII character but the quote and the
+  backslash, which costs the documents of those writers;
 - it is **at most 256 KB long** (`StandingGrant::LONGEST`): a longer text is refused before a byte of
   it is read — a grant is a page a person reads before signing it;
 - **nothing is taken off the ends of a text.** A reader that trims repairs: the document a person

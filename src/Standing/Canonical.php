@@ -119,14 +119,14 @@ final class Canonical
             if ($byte === '"') {
                 $from = $at;
                 for (++$at; $json[$at] !== '"'; ++$at) {
-                    // PROPOSED, NOT DECIDED (the sixth review, L5; greenhouse decisions/0615): what a person signs
-                    // spells a plain character plainly. A text is read after its escapes are, so `lab:` followed by
-                    // seven `\u00..` groups was shown as escapes and read as `lab:publish`, with the digest of the
-                    // plain text. No text a grant keeps needs such an escape, and no writer makes one. To take the
-                    // proposal out: this `if`, and {@see self::spellsAPlainCharacter()}.
-                    if ($json[$at] === '\\' && $json[$at + 1] === 'u' && self::spellsAPlainCharacter(substr($json, $at + 2, 4))) {
+                    // PROPOSED, NOT DECIDED (the sixth review, L5, as the seventh adjusted it; greenhouse
+                    // decisions/0615): what a person signs spells plainly what NAMES are made of. A text is read after
+                    // its escapes are, so `lab:` followed by seven `\u00..` groups was shown as escapes and read as
+                    // `lab:publish`, with the digest of the plain text. No text a grant keeps needs such an escape.
+                    // To take the proposal out: this `if`, and {@see self::spellsWhatNamesAreMadeOf()}.
+                    if ($json[$at] === '\\' && $json[$at + 1] === 'u' && self::spellsWhatNamesAreMadeOf(substr($json, $at + 2, 4))) {
                         throw new \InvalidArgumentException(\sprintf(
-                            '%s writes %s as an escape (\\u%s): what a person signs spells a plain character plainly — a reader would show the escape and read the character',
+                            '%s writes %s as an escape (\\u%s): what a person signs spells plainly what a name is made of — a reader would show the escape and read the character',
                             $where,
                             self::shown(\chr((int) hexdec(substr($json, $at + 2, 4)))),
                             strtolower(substr($json, $at + 2, 4)),
@@ -164,15 +164,26 @@ final class Canonical
     }
 
     /**
-     * PROPOSED, NOT DECIDED ({@see self::saidOnce()}): whether four hexadecimal digits name a printable ASCII
-     * character a text can say as itself — every one from the space to the tilde but the quote and the backslash,
-     * which a JSON text can only say as an escape.
+     * PROPOSED, NOT DECIDED ({@see self::saidOnce()}): whether four hexadecimal digits name a character NAMES ARE MADE
+     * OF — a letter, a digit, the colon, the dot, the underscore, the dash, or the space.
+     *
+     * Those are what an id, an operation, the name of an argument, an axis and an expiry are spelled with: written as
+     * escapes, a name is shown as noise and read as itself. What is spared is what ordinary writers DO escape. A
+     * writer that is «safe for HTML» writes the apostrophe, `<`, `>`, `&` — and some `=`, `+` and the backtick — as
+     * escapes: PHP's own `json_encode` with `JSON_HEX_APOS`, `JSON_HEX_TAG` or `JSON_HEX_AMP`, and Go, Gson and
+     * System.Text.Json by default. None of those characters can spell a name, and a sentence that carries one is
+     * read.
+     *
+     * THE STRICT ALTERNATIVE, for whoever decides: refuse the escape of EVERY printable ASCII character but the quote
+     * and the backslash — 93 of them — which a JSON text can only say as escapes. It is one line,
+     * `return $code >= 0x20 && $code <= 0x7E && $code !== 0x22 && $code !== 0x5C;`, and it costs the documents of
+     * those writers: a sentence with an apostrophe or an ampersand, written by one of them, is then not read.
      */
-    private static function spellsAPlainCharacter(string $hex): bool
+    private static function spellsWhatNamesAreMadeOf(string $hex): bool
     {
         $code = (int) hexdec($hex);
 
-        return $code >= 0x20 && $code <= 0x7E && $code !== 0x22 && $code !== 0x5C;
+        return $code <= 0x7F && preg_match('/^[A-Za-z0-9:._ -]$/D', \chr($code)) === 1;
     }
 
     /**

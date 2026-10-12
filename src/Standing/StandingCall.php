@@ -29,6 +29,9 @@ final readonly class StandingCall
     public OperationId $operation;
 
     /**
+     * @param string               $operation the operation that is called, by its name as it reads: a text that names
+     *                                        no operation is not a call a grant could be asked about, and an identity
+     *                                        built elsewhere has already had its ends taken off
      * @param array<string, mixed> $arguments the arguments of the call, as the handler will receive them
      * @param string               $seat      who calls, by the key the grant would name it by
      * @param string|null          $subject   the digest of the content this call acts on, or `null` when the operation cannot say
@@ -36,13 +39,14 @@ final readonly class StandingCall
      * @param \DateTimeImmutable   $at        the moment of the act
      */
     public function __construct(
-        OperationId|string $operation,
+        string $operation,
         public array $arguments,
         public string $seat,
         public ?string $subject,
         public EffectProfile $effect,
         public \DateTimeImmutable $at,
     ) {
-        $this->operation = $operation instanceof OperationId ? $operation : new OperationId($operation);
+        $this->operation = NamedCall::named($operation)
+            ?? throw new \InvalidArgumentException('a call is of one operation, named as it reads; got ' . Canonical::shown($operation));
     }
 }

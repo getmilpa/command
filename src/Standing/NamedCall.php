@@ -83,13 +83,13 @@ final readonly class NamedCall
      * @param array<array-key, mixed> $free      the arguments a call may also carry, with any value — for a closed
      *                                           match: typically the one that says which candidate
      */
-    public function __construct(OperationId|string $operation, array $arguments = [], array $free = [])
+    public function __construct(string $operation, array $arguments = [], array $free = [])
     {
         $id = self::named($operation);
         if ($id === null) {
             throw new \InvalidArgumentException(\sprintf(
                 '%s does not name one operation. A standing grant names each operation whole — no pattern, no wildcard: what is not named is not covered.',
-                Canonical::shown($operation instanceof OperationId ? $operation->canonical : $operation),
+                Canonical::shown($operation),
             ));
         }
 
@@ -142,11 +142,15 @@ final readonly class NamedCall
      * (`:lab:scan:`), each taken off before anything looked. Nothing is taken off here: a spelling names an
      * operation when its identity is that same spelling, separator for separator — and an identity is lowercase
      * letters, digits, dashes and dots, so nothing else is in it either.
+     *
+     * IT IS ASKED OF THE TEXT, NEVER OF AN IDENTITY BUILT ELSEWHERE. An {@see OperationId} has already had its ends
+     * taken off, and nothing can ask for them back: so a named call, a receipt and a call are given the name as
+     * text, and make the identity from it here, after it has been looked at.
      */
-    public static function named(OperationId|string $operation): ?OperationId
+    public static function named(string $operation): ?OperationId
     {
-        $id = $operation instanceof OperationId ? $operation : new OperationId($operation);
-        if (\is_string($operation) && str_replace([':', '_'], '.', strtolower($operation)) !== $id->canonical) {
+        $id = new OperationId($operation);
+        if (str_replace([':', '_'], '.', strtolower($operation)) !== $id->canonical) {
             return null;
         }
 

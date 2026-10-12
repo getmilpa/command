@@ -27,7 +27,9 @@ use PHPUnit\Framework\TestCase;
  * can be taken out: this file, and the lines of `Canonical` that carry its name.
  *
  *   · L2 — a text does not begin with a combining mark, and carries no more than eight in a row.
- *   · L5 — the text a person signs spells a plain ASCII character plainly, never as a `\u` escape.
+ *   · L5, as the seventh review adjusted it — the text a person signs spells plainly what NAMES are made of
+ *     (letters, digits, the colon, the dot, the underscore, the dash, the space), never as a `\u` escape. What a
+ *     writer that is «safe for HTML» escapes — the apostrophe, `<`, `>`, `&` — is read.
  *
  * The two tests the reviewer wrote are here as they were written; every text is built from code points.
  *
@@ -128,8 +130,30 @@ final class TwoProposalsOfASixthReviewTest extends TestCase
         yield 'a plain letter' => [$u . '0070', true];
         yield 'a plain letter, the hexadecimal in capitals' => [$u . '004A', true];
         yield 'the first printable character, the space' => [$u . '0020', true];
-        yield 'the last one, the tilde' => [$u . '007E', true];
         yield 'a digit' => [$u . '0037', true];
+        yield 'the colon, which is in every operation' => [$u . '003a', true];
+        yield 'the dot' => [$u . '002E', true];
+        yield 'the underscore' => [$u . '005f', true];
+        yield 'the dash' => [$u . '002d', true];
+        yield 'the first letter and the last, in each case' => [$u . '0041', true];
+        yield 'the last capital' => [$u . '005A', true];
+        yield 'the last small letter' => [$u . '007a', true];
+        yield 'the first small letter' => [$u . '0061', true];
+        yield 'the last digit' => [$u . '0039', true];
+        yield 'the first digit' => [$u . '0030', true];
+        yield 'the apostrophe, which writers that are safe for HTML escape' => [$u . '0027', false];
+        yield 'the less-than sign, the same' => [$u . '003c', false];
+        yield 'the greater-than sign' => [$u . '003E', false];
+        yield 'the ampersand' => [$u . '0026', false];
+        yield 'the equals sign' => [$u . '003d', false];
+        yield 'the plus sign' => [$u . '002b', false];
+        yield 'the backtick' => [$u . '0060', false];
+        yield 'the slash' => [$u . '002f', false];
+        yield 'the tilde, the last printable character' => [$u . '007E', false];
+        yield 'the at sign, just before the capitals' => [$u . '0040', false];
+        yield 'the bracket just after them' => [$u . '005b', false];
+        yield 'the brace just after the small letters' => [$u . '007b', false];
+        yield 'a letter of another alphabet whose low byte is a plain letter' => [$u . '0170', false];
         yield 'the quote, which a text can only say as an escape' => [$u . '0022', false];
         yield 'the backslash, the same' => [$u . '005C', false];
         yield 'a letter with an accent, which many writers escape' => [$u . '00e9', false];
@@ -137,6 +161,20 @@ final class TwoProposalsOfASixthReviewTest extends TestCase
         yield 'the short escape of the quote' => [\chr(0x5C) . '"', false];
         yield 'the short escape of the slash, which PHP writes by default' => [\chr(0x5C) . '/', false];
         yield 'a backslash said twice and then the letters u0070' => [\chr(0x5C) . \chr(0x5C) . 'u0070', false];
+    }
+
+    public function testWhatAWriterThatIsSafeForHtmlWritesIsRead(): void
+    {
+        // The sentence this proposal carried said «no writer makes one». Writers do: PHP's own, asked to be safe for
+        // HTML, and others by default. Their documents are read, and are the grant the plain text is.
+        $document = Grants::document(['undo' => "don't publish <it> & stop"]);
+        $plain = StandingGrant::fromJson((string) json_encode($document, \JSON_UNESCAPED_SLASHES));
+        foreach ([\JSON_HEX_APOS, \JSON_HEX_TAG, \JSON_HEX_AMP, \JSON_HEX_QUOT, \JSON_HEX_APOS | \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_HEX_QUOT] as $flags) {
+            $written = (string) json_encode($document, $flags);
+            self::assertSame($plain->digest(), StandingGrant::fromJson($written)->digest(), 'refused, or read as another grant, with flags ' . $flags);
+        }
+        self::assertStringContainsString('\u0027', (string) json_encode($document, \JSON_HEX_APOS), 'control: that writer does escape the apostrophe');
+        self::assertSame("don't publish <it> & stop", $plain->undo);
     }
 
     #[DataProvider('escapesInATextAPersonSigns')]

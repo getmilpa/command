@@ -14,7 +14,6 @@ declare(strict_types=1);
 
 namespace Milpa\Command\Tests\Standing;
 
-use Milpa\Command\Consent\OperationId;
 use Milpa\Command\Standing\Canonical;
 use Milpa\Command\Standing\ConditionReceipt;
 use Milpa\Command\Standing\GrantStanding;
@@ -263,7 +262,7 @@ final class WhatASixthReviewFoundInTheContractTest extends TestCase
         foreach (['subject', 'instrument'] as $which) {
             self::assertNull(ConditionReceipt::fromArray([$which => $digest] + $line), "a receipt: «{$which}» given as " . json_encode($digest));
             try {
-                new ConditionReceipt(new OperationId('lab.scan'), [], $which === 'subject' ? $digest : Grants::CANDIDATE, false, $which === 'instrument' ? $digest : Grants::INSTRUMENT, null, Grants::at('2026-10-11T11:55:00Z'));
+                new ConditionReceipt('lab.scan', [], $which === 'subject' ? $digest : Grants::CANDIDATE, false, $which === 'instrument' ? $digest : Grants::INSTRUMENT, null, Grants::at('2026-10-11T11:55:00Z'));
                 self::fail("a receipt was built with «{$which}» as " . json_encode($digest));
             } catch (\InvalidArgumentException $refused) {
                 self::assertSame(0, preg_match('/[^\x20-\x7E«»—…]/u', $refused->getMessage()));

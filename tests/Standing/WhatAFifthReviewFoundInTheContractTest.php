@@ -14,7 +14,6 @@ declare(strict_types=1);
 
 namespace Milpa\Command\Tests\Standing;
 
-use Milpa\Command\Consent\OperationId;
 use Milpa\Command\Effect\Authority;
 use Milpa\Command\Effect\ContextFacts;
 use Milpa\Command\Effect\DeclaredAuthorityPolicy;
@@ -330,7 +329,7 @@ final class WhatAFifthReviewFoundInTheContractTest extends TestCase
         ]);
         $asked = Grants::call();
         $call = static fn (?string $subject): StandingCall => new StandingCall($long, $asked->arguments, $asked->seat, $subject, $asked->effect, $asked->at);
-        $red = new ConditionReceipt(new OperationId($long), ['path' => 'candidate.tar'], Grants::CANDIDATE, false, Grants::INSTRUMENT, null, Grants::at('2026-10-11T11:50:00Z'));
+        $red = new ConditionReceipt($long, ['path' => 'candidate.tar'], Grants::CANDIDATE, false, Grants::INSTRUMENT, null, Grants::at('2026-10-11T11:50:00Z'));
         $facts = ['state' => GrantState::InForce, 'signatureFault' => null, 'watcherSignalAt' => Grants::at('2026-10-11T11:50:00Z'), 'receipts' => [$red], 'instruments' => [$red->by->canonical => Grants::INSTRUMENT], 'recordFault' => null];
         $verdicts = [
             'never_watched' => StandingJudge::judge($grant, new GrantStanding(...['watcherSignalAt' => null] + $facts), $call(Grants::CANDIDATE)),
@@ -523,7 +522,7 @@ final class WhatAFifthReviewFoundInTheContractTest extends TestCase
 
     public function testAGrantBuiltByHandReadsBackFromItsOwnSpelling(): void
     {
-        $by = new NamedCall(new OperationId('lab:scan'));
+        $by = new NamedCall('lab:scan');
         try {
             $grant = new StandingGrant(
                 'g',
@@ -607,10 +606,12 @@ final class WhatAFifthReviewFoundInTheContractTest extends TestCase
 
     public function testAnOperationHandedInAsAnIdentityEndsWhereItEndsToo(): void
     {
-        // An identity built elsewhere has already had its ends taken off — and what is left may still end in a line break.
+        // An identity built elsewhere has already had its ends taken off — and what is left may still end in a line
+        // break. This test handed one in and was refused for the line break; an identity is not taken at all now
+        // (the seventh review): the name is given as text, and that text is refused.
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('does not name one operation');
-        new NamedCall(new OperationId("lab:scan\n."));
+        new NamedCall("lab:scan\n.");
     }
 
     // ── D5, complete · a NO of that instrument on that content stops the act, from whatever run ─────────────

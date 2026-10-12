@@ -251,19 +251,33 @@ final class StandingJudge
         }
         $suspended = null;
         $unread = null;
+        $beside = null;
         $passed = null;
         $furthest = null;
         $naming = 0;
         foreach ($grants as ['grant' => $grant, 'standing' => $standing]) {
             $verdict = self::judge($grant, $standing, $call);
             if (!$verdict->named()) {
+                // PROPOSED, NOT DECIDED (the seventh review, M1; greenhouse decisions/0615): UNDER DOUBT, A STOP STOPS.
+                // «The grant names the call» was made for LENDING, where being exact fails closed. It also decided
+                // which calls a stop reaches, and there being exact fails open: a stopped grant fixes `channel` to
+                // "stable", a wider one is in force, and the seat calls with no `channel` at all — the operation's
+                // default — so the stopped grant «does not name» the call and the wider one lends it. To take the
+                // proposal out: this `if`, the one before the last `return`, and the two functions it calls.
+                if ($beside === null && self::mayBeNaming($grant, $call) && ($standing->state === GrantState::Suspended || $standing->recordFault !== null || self::holdsALineNotRead($standing))) {
+                    $beside = ['grant' => $grant, 'how' => $standing->state === GrantState::Suspended ? 'is suspended' : 'has a record that does not read whole'];
+                }
+
                 continue;
             }
             ++$naming;
             $answer = ['grant' => $grant, 'verdict' => $verdict];
             if ($standing->state === GrantState::Suspended) {
                 $suspended = $answer;
-            } elseif ($standing->recordFault !== null) {
+            } elseif ($standing->recordFault !== null || self::holdsALineNotRead($standing)) {
+                // …by what the host SAID of its record, or by what the judge itself found in the list of receipts —
+                // asked of the list, not of the reason the grant was refused for: a signature that does not hold is
+                // said first, and would hide it.
                 $unread ??= $answer;
             } elseif ($verdict->passes()) {
                 $passed ??= $answer;
@@ -299,7 +313,79 @@ final class StandingJudge
             )];
         }
 
+        // PROPOSED, NOT DECIDED (the seventh review, M1): the call ANOTHER grant would lend, while a stopped grant
+        // may be the one that names it. Where no other grant would lend, the answer is what it was.
+        if ($beside !== null && $passed !== null) {
+            return ['grant' => $beside['grant'], 'verdict' => StandingVerdict::refuse(StandingCheck::InForce, 'stopped_beside', \sprintf(
+                'Standing grant «%1$s» %2$s, and it may be the one that names this call: it lends to this seat and covers `%3$s`, and the call does not say another value for what it fixes. Under doubt a stop stops: another grant lends nothing to this call until a person lifts that stop or gives a grant that supersedes «%1$s» by name — or the call says the value it means.',
+                $beside['grant']->id,
+                $beside['how'],
+                Canonical::short($call->operation->forCli()),
+            ))];
+        }
+
         return $suspended ?? $unread ?? $passed ?? $furthest;
+    }
+
+    /** Whether the list of receipts a host handed in holds something that is not one: a line that was not read. */
+    private static function holdsALineNotRead(GrantStanding $standing): bool
+    {
+        foreach ($standing->receipts as $receipt) {
+            if (!$receipt instanceof ConditionReceipt) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * PROPOSED, NOT DECIDED ({@see self::among()}): whether a grant MAY be the one that names this call, spelled
+     * another way — it lends to the seat, it covers the operation, and the call does not SAY another value for
+     * anything that entry fixes.
+     */
+    private static function mayBeNaming(StandingGrant $grant, StandingCall $call): bool
+    {
+        if (!$grant->lendsTo($call->seat)) {
+            return false;
+        }
+        foreach ($grant->covers as $act) {
+            if (!$act->operation->is($call->operation)) {
+                continue;
+            }
+            foreach ($act->arguments as $name => $fixed) {
+                if (self::saysAnother($call->arguments[$name] ?? null, $fixed)) {
+                    continue 2;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * PROPOSED, NOT DECIDED ({@see self::mayBeNaming()}): whether what a call carries for an argument is certainly
+     * ANOTHER value than the one a grant fixes — by the least that ordinary PHP reads as one value, and no more.
+     *
+     * Not another: the argument is not there or is `null` (the operation's default may be the fixed value); and the
+     * same text once the type is set aside — a number and the text of its digits, a boolean and the texts PHP and
+     * JSON write it as (`true`: "1", "true"; `false`: "0", "", "false"). Everything else says another value:
+     * capitals, a space around the value, `07` for 7, «yes» for true, a list. An operation that reads those as one
+     * is not covered by this.
+     */
+    private static function saysAnother(mixed $carried, string|int|bool $fixed): bool
+    {
+        if ($carried === null) {
+            return false;
+        }
+        if (!\is_scalar($carried)) {
+            return true;
+        }
+        $texts = static fn (string|int|float|bool $value): array => \is_bool($value) ? ($value ? ['1', 'true'] : ['0', '', 'false']) : [(string) $value];
+
+        return array_intersect($texts($carried), $texts($fixed)) === [];
     }
 
     /** How far through the seven checks a refusal got. */

@@ -36,11 +36,15 @@ use Milpa\Command\Consent\OperationId;
  */
 final readonly class ConditionReceipt
 {
+    public OperationId $by;
+
     /**
+     * @param string               $by        the operation that measured, by its name as it reads — never an identity
+     *                                        built elsewhere, which has already had its ends taken off
      * @param array<string, mixed> $arguments the arguments the measuring call carried
      */
     public function __construct(
-        public OperationId $by,
+        string $by,
         public array $arguments,
         public string $subject,
         public bool $ok,
@@ -59,9 +63,8 @@ final readonly class ConditionReceipt
                 throw new \InvalidArgumentException(Canonical::notOneLine("a condition receipt gives the digest of {$which}", $digest));
             }
         }
-        if (NamedCall::named($by) === null) {
-            throw new \InvalidArgumentException('a condition receipt says which operation measured, by its name; got ' . Canonical::shown($by->canonical));
-        }
+        $this->by = NamedCall::named($by)
+            ?? throw new \InvalidArgumentException('a condition receipt says which operation measured, by its name as it reads; got ' . Canonical::shown($by));
     }
 
     /**
@@ -118,12 +121,11 @@ final readonly class ConditionReceipt
             || !Canonical::oneLine($data['subject']) || !Canonical::oneLine($data['instrument'])) {
             return null;
         }
-        $by = NamedCall::named($data['by']);
-        if ($by === null) {
+        if (NamedCall::named($data['by']) === null) {
             return null;
         }
         $who = $data['who'] ?? null;
 
-        return new self($by, $data['arguments'], $data['subject'], $data['ok'], $data['instrument'], \is_string($who) ? $who : null, $at);
+        return new self($data['by'], $data['arguments'], $data['subject'], $data['ok'], $data['instrument'], \is_string($who) ? $who : null, $at);
     }
 }

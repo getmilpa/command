@@ -155,7 +155,7 @@ final class AStandingGrantNeverCrossesItsFloorsTest extends TestCase
         self::assertStringContainsString('a claim nobody can check', $refused(static fn () => new GrantCondition(' ', 's', $by)));
         self::assertStringContainsString('names itself and says what would show the grant wrong', $refused(static fn () => new Falsifier('', 's', $by, 60)));
         self::assertStringContainsString('and one plain value: text, a whole number, or true/false', $refused(static fn () => new NamedCall('lab:scan', [' ' => 'x'])));
-        self::assertStringContainsString('does not name one operation', $refused(static fn () => new NamedCall(new \Milpa\Command\Consent\OperationId('lab scan'))));
+        self::assertStringContainsString('does not name one operation', $refused(static fn () => new NamedCall('lab scan')));
         self::assertSame('ACCEPTED', $refused(static fn () => new StandingGrant('g', [Grants::SEAT], [$by], $ceiling, [$condition], 'undo', $falsifier)));
     }
 
