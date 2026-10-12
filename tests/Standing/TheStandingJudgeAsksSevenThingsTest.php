@@ -317,7 +317,9 @@ final class TheStandingJudgeAsksSevenThingsTest extends TestCase
 
     public function testASuspendedGrantWhoseSignatureDoesNotHoldStillStopsTheCall(): void
     {
-        $broken = new GrantStanding(GrantState::Suspended, 'stopped', signatureFault: 'the key that signed it no longer holds the word');
+        // Its record READS: a grant that is suspended and whose record does not read is told that its record has to
+        // read again, not that a grant superseding it would take the stop away (an eighth review, L1).
+        $broken = new GrantStanding(GrantState::Suspended, 'stopped', signatureFault: 'the key that signed it no longer holds the word', recordFault: null);
         $answer = StandingJudge::among([self::held('stopped', $broken), self::held('would-lend')], Grants::call(), null);
 
         self::assertFalse($answer['verdict']->passes() ?? true);

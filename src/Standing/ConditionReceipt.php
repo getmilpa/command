@@ -39,12 +39,13 @@ final readonly class ConditionReceipt
     public OperationId $by;
 
     /**
-     * @param string               $by        the operation that measured, by its name as it reads — never an identity
-     *                                        built elsewhere, which has already had its ends taken off
+     * @param mixed                $by        the operation that measured, by its name as TEXT, as it reads — never an
+     *                                        identity built elsewhere, which has already had its ends taken off:
+     *                                        anything but a text is a `TypeError`, whatever the caller's file declares
      * @param array<string, mixed> $arguments the arguments the measuring call carried
      */
     public function __construct(
-        string $by,
+        mixed $by,
         public array $arguments,
         public string $subject,
         public bool $ok,

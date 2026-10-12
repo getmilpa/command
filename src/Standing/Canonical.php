@@ -114,22 +114,28 @@ final class Canonical
         // whether its keys so far are the places of a list — "0", then "1", then "2".
         $open = [];
         $text = null;
+        $valueOf = null;
         for ($at = 0, $length = \strlen($json); $at < $length; ++$at) {
             $byte = $json[$at];
             if ($byte === '"') {
                 $from = $at;
+                // PROPOSED, NOT DECIDED (the sixth review, L5, as the seventh and the eighth adjusted it; greenhouse
+                // decisions/0615): what a person signs spells plainly what NAMES are made of — and, where the text is
+                // not a sentence, EVERY character. A text is read after its escapes are, so `lab:` followed by seven
+                // `\u00..` groups was shown as escapes and read as `lab:publish`, with the digest of the plain text;
+                // and a value an argument is fixed to, `*` or `<=`, is made of the very characters a sentence is
+                // forgiven. To take the proposal out: `$valueOf`, this line, the `if` below, and
+                // {@see self::spellsWhatIsWrittenPlainly()}.
+                $exact = \in_array($open[\count($open) - 1]['name'] ?? null, self::EXACT, true) || $valueOf === self::EXACTLY;
+                $valueOf = null;
                 for (++$at; $json[$at] !== '"'; ++$at) {
-                    // PROPOSED, NOT DECIDED (the sixth review, L5, as the seventh adjusted it; greenhouse
-                    // decisions/0615): what a person signs spells plainly what NAMES are made of. A text is read after
-                    // its escapes are, so `lab:` followed by seven `\u00..` groups was shown as escapes and read as
-                    // `lab:publish`, with the digest of the plain text. No text a grant keeps needs such an escape.
-                    // To take the proposal out: this `if`, and {@see self::spellsWhatNamesAreMadeOf()}.
-                    if ($json[$at] === '\\' && $json[$at + 1] === 'u' && self::spellsWhatNamesAreMadeOf(substr($json, $at + 2, 4))) {
+                    if ($json[$at] === '\\' && $json[$at + 1] === 'u' && self::spellsWhatIsWrittenPlainly(substr($json, $at + 2, 4), $exact)) {
                         throw new \InvalidArgumentException(\sprintf(
-                            '%s writes %s as an escape (\\u%s): what a person signs spells plainly what a name is made of — a reader would show the escape and read the character',
+                            '%s writes %s as an escape (\\u%s): what a person signs spells plainly %s — a reader would show the escape and read the character',
                             $where,
                             self::shown(\chr((int) hexdec(substr($json, $at + 2, 4)))),
                             strtolower(substr($json, $at + 2, 4)),
+                            $exact ? 'every character of a seat, of an expiry, and of the name and the value of an argument' : 'what a name is made of',
                         ));
                     }
                     $at += $json[$at] === '\\' ? 1 : 0;
@@ -138,6 +144,7 @@ final class Canonical
             } elseif ($byte === ':') {
                 // Outside a text, a colon follows a key and nothing else.
                 $key = (string) json_decode((string) $text);
+                $valueOf = $key;
                 $frame = \count($open) - 1;
                 if (isset($open[$frame]['said']['«' . $key])) {
                     throw new \InvalidArgumentException(\sprintf(
@@ -164,24 +171,43 @@ final class Canonical
     }
 
     /**
-     * PROPOSED, NOT DECIDED ({@see self::saidOnce()}): whether four hexadecimal digits name a character NAMES ARE MADE
-     * OF — a letter, a digit, the colon, the dot, the underscore, the dash, or the space.
+     * PROPOSED, NOT DECIDED ({@see self::saidOnce()}): the frames whose texts are NOT SENTENCES — every text inside
+     * `arguments` (the name of an argument and the value it is fixed to) and inside `to` (a seat).
+     */
+    private const EXACT = ['arguments', 'to'];
+
+    /** PROPOSED, NOT DECIDED ({@see self::saidOnce()}): the one key whose own text is not a sentence either. */
+    private const EXACTLY = 'expires_at';
+
+    /**
+     * PROPOSED, NOT DECIDED ({@see self::saidOnce()}): whether four hexadecimal digits name a character this contract
+     * asks to be WRITTEN PLAINLY where it stands.
      *
-     * Those are what an id, an operation, the name of an argument, an axis and an expiry are spelled with: written as
-     * escapes, a name is shown as noise and read as itself. What is spared is what ordinary writers DO escape. A
-     * writer that is «safe for HTML» writes the apostrophe, `<`, `>`, `&` — and some `=`, `+` and the backtick — as
-     * escapes: PHP's own `json_encode` with `JSON_HEX_APOS`, `JSON_HEX_TAG` or `JSON_HEX_AMP`, and Go, Gson and
-     * System.Text.Json by default. None of those characters can spell a name, and a sentence that carries one is
-     * read.
+     * IN A SENTENCE — an undo, a statement, a name — the characters NAMES ARE MADE OF: a letter, a digit, the colon,
+     * the dot, the underscore, the dash, or the space. Those are what an id, an operation, the name of a condition
+     * and an axis are spelled with: written as escapes, a name is shown as noise and read as itself. What is spared
+     * is what ordinary writers DO escape. A writer that is «safe for HTML» writes the apostrophe, `<`, `>`, `&` —
+     * and some `=`, `+` and the backtick — as escapes: PHP's own `json_encode` with `JSON_HEX_APOS`, `JSON_HEX_TAG`
+     * or `JSON_HEX_AMP`, and Go, Gson and System.Text.Json by default. A sentence that carries one is read.
      *
-     * THE STRICT ALTERNATIVE, for whoever decides: refuse the escape of EVERY printable ASCII character but the quote
-     * and the backslash — 93 of them — which a JSON text can only say as escapes. It is one line,
+     * WHERE THE TEXT IS NOT A SENTENCE — a seat, an expiry, the name of an argument and the value it is fixed to —
+     * EVERY printable ASCII character. A value may be fixed to any visible ASCII, so one made of what a sentence is
+     * forgiven (`*`, `/`, `~`, `<=`) was written whole in escapes: shown as noise, read as the value. So was the
+     * plus of an expiry, and a seat. WHAT IT COSTS: a writer that escapes the plus cannot write an expiry with a
+     * positive offset — it writes the same instant with `Z` —, and one that escapes `<`, `>`, `&`, the apostrophe or
+     * the quote cannot fix an argument to a value that holds one, nor name a seat that does.
+     *
+     * THE STRICT ALTERNATIVE, for whoever decides: the second rule everywhere — refuse the escape of every printable
+     * ASCII character but the quote and the backslash, 93 of them, in a sentence too. It is one line,
      * `return $code >= 0x20 && $code <= 0x7E && $code !== 0x22 && $code !== 0x5C;`, and it costs the documents of
      * those writers: a sentence with an apostrophe or an ampersand, written by one of them, is then not read.
      */
-    private static function spellsWhatNamesAreMadeOf(string $hex): bool
+    private static function spellsWhatIsWrittenPlainly(string $hex, bool $exact): bool
     {
         $code = (int) hexdec($hex);
+        if ($exact) {
+            return $code >= 0x20 && $code <= 0x7E;
+        }
 
         return $code <= 0x7F && preg_match('/^[A-Za-z0-9:._ -]$/D', \chr($code)) === 1;
     }

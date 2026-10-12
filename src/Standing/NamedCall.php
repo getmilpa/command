@@ -79,11 +79,13 @@ final readonly class NamedCall
     public array $free;
 
     /**
+     * @param mixed                   $operation the operation, by its name as TEXT — anything else is a `TypeError`,
+     *                                           whatever the caller's file declares ({@see self::named()})
      * @param array<array-key, mixed> $arguments the values a call must carry, by argument name
      * @param array<array-key, mixed> $free      the arguments a call may also carry, with any value — for a closed
      *                                           match: typically the one that says which candidate
      */
-    public function __construct(string $operation, array $arguments = [], array $free = [])
+    public function __construct(mixed $operation, array $arguments = [], array $free = [])
     {
         $id = self::named($operation);
         if ($id === null) {
@@ -146,15 +148,36 @@ final readonly class NamedCall
      * IT IS ASKED OF THE TEXT, NEVER OF AN IDENTITY BUILT ELSEWHERE. An {@see OperationId} has already had its ends
      * taken off, and nothing can ask for them back: so a named call, a receipt and a call are given the name as
      * text, and make the identity from it here, after it has been looked at.
+     *
+     * THE TYPE IS ASKED HERE, NOT LEFT TO THE CALLER'S FILE. `strict_types` belongs to whoever calls: from PHP's
+     * default mode an `OperationId` — it is `Stringable` — turns itself into text before a parameter typed `string`
+     * ever sees it, and the identity built elsewhere is in. So the parameter takes anything, and what is not a text
+     * is a `TypeError` for every caller.
+     *
+     * @param mixed $operation the name, as text
+     *
+     * @throws \TypeError when what is handed in is not a text
      */
-    public static function named(string $operation): ?OperationId
+    public static function named(mixed $operation): ?OperationId
     {
+        if (!\is_string($operation)) {
+            throw new \TypeError(\sprintf('the name of an operation is given as text, never as an identity built elsewhere; got %s', get_debug_type($operation)));
+        }
         $id = new OperationId($operation);
         if (str_replace([':', '_'], '.', strtolower($operation)) !== $id->canonical) {
             return null;
         }
 
         return preg_match(self::OPERATION, $id->canonical) === 1 ? $id : null;
+    }
+
+    /**
+     * Whether a value is one an argument can be fixed to: a whole number, true or false, or text a person can read
+     * and no other — visible ASCII, at least one character, single spaces inside, none around.
+     */
+    public static function fixable(mixed $value): bool
+    {
+        return \is_int($value) || \is_bool($value) || (\is_string($value) && preg_match(self::VALUE, $value) === 1);
     }
 
     /**

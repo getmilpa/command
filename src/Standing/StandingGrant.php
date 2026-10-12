@@ -406,7 +406,10 @@ final readonly class StandingGrant
      * no grant it can hand in, so the fault is the third thing {@see StandingJudge::among()} asks for, and with it
      * nothing is lent to any seat.
      *
-     * A text longer than {@see self::LONGEST} bytes is refused before it is read.
+     * A text longer than {@see self::LONGEST} bytes is refused before it is read — and so is one whose own
+     * CANONICAL spelling would be longer: that spelling says `supersedes`, `lifts` and `expires_at` also when the
+     * text left them out, and a text the reader took and whose spelling it refused would be a document its house
+     * cannot read back. The limit is of this reader: a grant put together in code has none of its own.
      */
     public static function fromJson(string $json): self
     {
@@ -421,7 +424,12 @@ final readonly class StandingGrant
         // object — read into an array, `{"0": …, "1": …}` is one.
         Canonical::saidOnce($json, 'a standing grant');
 
-        return self::fromArray($data);
+        $grant = self::fromArray($data);
+        if (\strlen($grant->canonical()) > self::LONGEST) {
+            throw new \InvalidArgumentException(\sprintf('the canonical spelling of this standing grant is %d bytes, longer than a standing grant is: at most %d are read, and a house reads back what it keeps', \strlen($grant->canonical()), self::LONGEST));
+        }
+
+        return $grant;
     }
 
     /**

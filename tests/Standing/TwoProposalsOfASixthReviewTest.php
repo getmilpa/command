@@ -27,11 +27,13 @@ use PHPUnit\Framework\TestCase;
  * can be taken out: this file, and the lines of `Canonical` that carry its name.
  *
  *   · L2 — a text does not begin with a combining mark, and carries no more than eight in a row.
- *   · L5, as the seventh review adjusted it — the text a person signs spells plainly what NAMES are made of
- *     (letters, digits, the colon, the dot, the underscore, the dash, the space), never as a `\u` escape. What a
- *     writer that is «safe for HTML» escapes — the apostrophe, `<`, `>`, `&` — is read.
+ *   · L5, as the seventh and the eighth reviews adjusted it — the text a person signs spells plainly what NAMES
+ *     are made of (letters, digits, the colon, the dot, the underscore, the dash, the space), never as a `\u`
+ *     escape. In a SENTENCE, what a writer that is «safe for HTML» escapes — the apostrophe, `<`, `>`, `&` — is
+ *     read. Where the text is NOT a sentence — a seat, an expiry, the name of an argument and the value it is fixed
+ *     to — every printable ASCII character is spelled plainly.
  *
- * The two tests the reviewer wrote are here as they were written; every text is built from code points.
+ * The tests the reviewers wrote are here as they were written; every text is built from code points.
  *
  * @subject-in milpa/command
  */
@@ -191,10 +193,136 @@ final class TwoProposalsOfASixthReviewTest extends TestCase
             }
             if ($refused) {
                 self::assertStringContainsString('as an escape', (string) $said, $at === 0 ? 'in a value' : 'in a key');
+                self::assertStringContainsString('what a person signs spells plainly what a name is made of —', (string) $said, 'an undo and a key are a sentence and a name: the rule that speaks is the one of names');
                 self::assertSame(0, preg_match('/[^\x20-\x7E«»—…]/u', (string) $said));
             } else {
                 self::assertStringNotContainsString('as an escape', (string) $said, $at === 0 ? 'in a value' : 'in a key');
             }
         }
+    }
+
+    // ── as the eighth review adjusted it: where a text is not a sentence, every character is spelled plainly ──
+
+    /** The reviewer's test, as written. */
+    public function testAFixedValueIsNotSpelledInEscapes(): void
+    {
+        $plain = (string) json_encode(Grants::document(['covers' => [['operation' => 'lab:publish', 'arguments' => ['target' => '*']]]]), \JSON_UNESCAPED_SLASHES);
+        $escape = \chr(0x5C) . 'u002a';
+        $noise = str_replace('"target":"*"', '"target":"' . $escape . '"', $plain, $count);
+        self::assertSame(1, $count, 'control: the probe wrote the escape');
+        self::assertSame('*', StandingGrant::fromJson($plain)->covers[0]->arguments['target'], 'control: the plain text is read');
+
+        try {
+            $read = StandingGrant::fromJson($noise);
+        } catch (\InvalidArgumentException) {
+            self::assertTrue(true);
+
+            return;
+        }
+        self::fail('the value an argument is fixed to was written as an escape, shown as six characters of noise, and read as ' . json_encode($read->covers[0]->arguments['target']) . ' with the digest of the plain text');
+    }
+
+    /** One character of a text, written as its `\u` escape — the text given with «@@» where the character stands. */
+    private static function withAnEscape(string $text, int $code): string
+    {
+        $count = 0;
+        $written = str_replace('@@', \chr(0x5C) . \sprintf('u%04x', $code), $text, $count);
+        self::assertSame(1, $count, 'control: the escape was written');
+
+        return $written;
+    }
+
+    /** @return string|null what the reader said, or `null` when it read the text */
+    private static function saidOf(string $text): ?string
+    {
+        try {
+            StandingGrant::fromJson($text);
+        } catch (\InvalidArgumentException $refused) {
+            return $refused->getMessage();
+        }
+
+        return null;
+    }
+
+    /**
+     * Where a text is not a sentence, and the plain text that stands there in a control.
+     *
+     * @return iterable<string, array{array<string, mixed>, string}> a document with «@@» in the place; what «@@» is when written plainly
+     */
+    public static function whereATextIsNotASentence(): iterable
+    {
+        yield 'the value an argument is fixed to' => [['covers' => [['operation' => 'lab:publish', 'arguments' => ['target' => 'a@@b']]]], 'x'];
+        yield 'the name of an argument that is fixed' => [['covers' => [['operation' => 'lab:publish', 'arguments' => ['tar@@get' => 'stable']]]], 'x'];
+        yield 'the value an instrument is run with' => [['conditions' => [['name' => 'no-host-names', 'statement' => 'what is published names no machine', 'by' => ['operation' => 'lab:scan', 'arguments' => ['mode' => 'a@@b'], 'free' => ['path']]]]], 'x'];
+        yield 'the value a watcher is run with' => [['falsifier' => ['name' => 'a-published-name', 'statement' => 'a published release names a machine', 'watcher' => ['operation' => 'lab:watch', 'arguments' => ['scope' => 'a@@b']], 'within_seconds' => 3600]], 'x'];
+        yield 'a seat' => [['to' => ['key:ab@@cd']], 'x'];
+        yield 'a second seat' => [['to' => [Grants::SEAT, 'key:ab@@cd']], 'x'];
+        yield 'the expiry' => [['expires_at' => '2027-01-01T00:00:0@@Z'], '0'];
+    }
+
+    /** @param array<string, mixed> $document */
+    #[DataProvider('whereATextIsNotASentence')]
+    public function testWhereATextIsNotASentenceEveryCharacterIsSpelledPlainly(array $document, string $plainly): void
+    {
+        $text = (string) json_encode(Grants::document($document), \JSON_UNESCAPED_SLASHES);
+        self::assertNull(self::saidOf(str_replace('@@', $plainly, $text)), 'control: written plainly, the document is read');
+
+        $read = [];
+        for ($code = 0x20; $code <= 0x7E; ++$code) {
+            $said = self::saidOf(self::withAnEscape($text, $code));
+            if ($said === null || !str_contains($said, 'as an escape') || !str_contains($said, 'spells plainly every character of a seat, of an expiry, and of the name and the value of an argument')) {
+                $read[] = \sprintf('U+%04X %s', $code, $said === null ? 'READ' : substr($said, 0, 60));
+            }
+        }
+        self::assertSame([], $read, 'of the 95 printable ASCII characters, written as an escape here');
+        // …and no more than those: what is not printable ASCII is not this rule's to refuse.
+        self::assertStringNotContainsString('as an escape', (string) self::saidOf(self::withAnEscape($text, 0x00E9)));
+    }
+
+    public function testThePlusOfAnExpiryAndWhatASeatIsMadeOfAreSpelledPlainly(): void
+    {
+        $written = static fn (array $document): string => (string) json_encode(Grants::document($document), \JSON_UNESCAPED_SLASHES);
+        $u = \chr(0x5C) . 'u';
+
+        $expiry = $written(['expires_at' => '2027-01-01T00:00:00+02:00']);
+        self::assertNull(self::saidOf($expiry), 'control');
+        self::assertStringContainsString('writes "+" as an escape (\u002b)', (string) self::saidOf(str_replace('00+02', '00' . $u . '002b02', $expiry)));
+        // What it costs, and the way a writer that escapes the plus still has: the same instant, with Z.
+        $utc = $written(['expires_at' => '2026-12-31T22:00:00Z']);
+        self::assertSame(StandingGrant::fromJson($expiry)->digest(), StandingGrant::fromJson($utc)->digest());
+
+        $seat = $written(['to' => ['key:ab+cd/ef==']]);
+        self::assertNull(self::saidOf($seat), 'control');
+        self::assertStringContainsString('as an escape', (string) self::saidOf(str_replace('key:ab+cd/ef==', 'key:ab' . $u . '002bcd' . $u . '002fef' . $u . '003d' . $u . '003d', $seat)));
+    }
+
+    public function testASentenceIsStillASentenceWhereverItStandsInTheText(): void
+    {
+        // The frames that are not sentences close, and the key before a colon is forgotten at the next one: a sentence
+        // AFTER a seat, an expiry or the arguments of a call — in whatever order a writer says the keys — is read with
+        // what a writer that is safe for HTML escapes.
+        $apostrophe = \chr(0x5C) . 'u0027';
+        $document = Grants::document([
+            'expires_at' => '2027-01-01T00:00:00Z',
+            'conditions' => [['by' => ['arguments' => ['mode' => 'strict'], 'operation' => 'lab:scan', 'free' => ['path']], 'name' => 'no-host-names', 'statement' => "what is published doesn't name a machine"]],
+            'falsifier' => ['watcher' => ['arguments' => ['scope' => 'all'], 'operation' => 'lab:watch'], 'name' => 'a-published-name', 'statement' => "a published release shouldn't name a machine", 'within_seconds' => 3600],
+            'undo' => "don't keep it: withdraw it",
+        ]);
+        $plain = StandingGrant::fromJson((string) json_encode($document, \JSON_UNESCAPED_SLASHES));
+        foreach ([
+            'as the document says its keys' => $document,
+            'the expiry said last but one, the undo after it' => array_diff_key($document, ['undo' => 0, 'expires_at' => 0]) + ['expires_at' => $document['expires_at'], 'undo' => $document['undo']],
+            'no expiry said but as null, the undo after it' => array_diff_key($document, ['undo' => 0, 'expires_at' => 0]) + ['supersedes' => null, 'undo' => $document['undo']],
+            'the seats said last but one, the undo after them' => array_diff_key($document, ['undo' => 0, 'to' => 0]) + ['to' => $document['to'], 'undo' => $document['undo']],
+        ] as $how => $ordered) {
+            $written = (string) json_encode($ordered, \JSON_HEX_APOS);
+            self::assertSame(3, substr_count($written, $apostrophe), 'control: three apostrophes, each written as an escape');
+            self::assertNull(self::saidOf($written), $how);
+        }
+        self::assertSame($plain->digest(), StandingGrant::fromJson((string) json_encode($document, \JSON_HEX_APOS))->digest());
+
+        // …and a text that IS NOT a sentence stays one after a sentence: the order of the keys does not hide it.
+        $last = array_diff_key($document, ['to' => 0]) + ['to' => ['key:ab@@cd']];
+        self::assertStringContainsString('as an escape', (string) self::saidOf(self::withAnEscape((string) json_encode($last, \JSON_UNESCAPED_SLASHES), 0x2B)));
     }
 }
