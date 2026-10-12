@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.2](https://github.com/getmilpa/command/compare/v0.30.1...v0.30.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* correctives to the contract of standing grants — one expiry form, each thing said once, what six more reviews found, and D10 to D13 decided (greenhouse decisions/0615) ([#85](https://github.com/getmilpa/command/issues/85)) ([31bc32f](https://github.com/getmilpa/command/commit/31bc32f4d716cf816b6419f0ffa8002851f3cc6e))
+
 ## [0.30.1](https://github.com/getmilpa/command/compare/v0.30.0...v0.30.1) (2026-10-11)
 
 
