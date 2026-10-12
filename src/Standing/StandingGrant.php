@@ -338,13 +338,22 @@ final readonly class StandingGrant
         );
     }
 
-    /** A grant from its JSON text. */
+    /**
+     * A grant from its JSON text — the text a person signed.
+     *
+     * ONE READER, FOR A NEW DOCUMENT AND FOR ONE ALREADY SIGNED. What this refuses, it refuses the same way whether
+     * the text was never a grant or was one under an earlier version of this contract: a host that keeps signed
+     * documents and reads them again with a later contract cannot tell the two apart here. So such a host treats a
+     * document it kept and can no longer read as a FAULT of its record — never as a grant that is not there, which
+     * would bring back whatever that grant had replaced or stopped.
+     */
     public static function fromJson(string $json): self
     {
         $data = json_decode($json, true);
         if (!\is_array($data) || array_is_list($data)) {
             throw new \InvalidArgumentException('a standing grant is one JSON object: {"id", "to", "covers", "ceiling", "conditions", "undo", "falsifier"}');
         }
+        Canonical::saidOnce($json, 'a standing grant');
 
         return self::fromArray($data);
     }
