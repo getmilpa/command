@@ -124,9 +124,15 @@ final readonly class StandingGrant
         if ($lifts !== null && ($supersedes === null || trim($lifts) === '')) {
             throw new \InvalidArgumentException("standing grant «{$id}» says «lifts» only together with «supersedes»: it names the suspension of the grant it replaces, by its digest");
         }
+        if ($lifts !== null && !Canonical::oneLine($lifts)) {
+            throw new \InvalidArgumentException(Canonical::notOneLine("standing grant «{$id}» gives «lifts»", $lifts));
+        }
 
         $seats = [];
         foreach ($to as $seat) {
+            if (\is_string($seat) && !Canonical::oneLine($seat)) {
+                throw new \InvalidArgumentException(Canonical::notOneLine("standing grant «{$id}» gives a seat in «to»", $seat));
+            }
             if (!\is_string($seat) || trim($seat) === '' || preg_match('/[\s*]/', $seat) === 1) {
                 throw new \InvalidArgumentException("standing grant «{$id}» lends to the seats it names, each by its key — never to «anyone», and never to a pattern");
             }
@@ -191,6 +197,9 @@ final readonly class StandingGrant
 
         if (trim($undo) === '') {
             throw new \InvalidArgumentException("standing grant «{$id}» needs «undo»: how an act absorbed under it is taken back, in words");
+        }
+        if (!Canonical::oneLine($undo)) {
+            throw new \InvalidArgumentException(Canonical::notOneLine("standing grant «{$id}» gives «undo»", $undo));
         }
 
         $this->to = $seats;
@@ -418,6 +427,9 @@ final readonly class StandingGrant
         $inverse = $written['rollback_contract'] ?? null;
         if ($inverse !== null && (!\is_string($inverse) || trim($inverse) === '')) {
             throw new \InvalidArgumentException("{$where} gives «rollback_contract» of its ceiling as the name of the one operation that undoes, in words — or does not give it; got " . Canonical::shown($inverse));
+        }
+        if ($inverse !== null && !Canonical::oneLine($inverse)) {
+            throw new \InvalidArgumentException(Canonical::notOneLine("{$where} gives «rollback_contract» of its ceiling", $inverse));
         }
         $read = EffectProfile::fromArray($written);
         if ($read->rollbackContract !== $inverse) {

@@ -236,7 +236,14 @@ does not read** — a line the judge would ignore is a limit nobody keeps.
   (`rollback_contract`) is the name of one operation in words, and what the lenient reader of a
   stored profile would drop or change is not taken;
 - `expires_at` is one form — the date, a `T`, the time to the second, then `Z` or the offset — whose
-  own spelling in UTC is that form too.
+  own spelling in UTC is that form too;
+- **every text it keeps is one line of plain text** — `undo`, the `name` and `statement` of a
+  condition and of the falsifier, each seat, `lifts`, the text an argument is fixed to and the
+  inverse a ceiling names. No line break, no tab, no other control character (C0, DEL, C1), no
+  character that turns or isolates the direction text is read in, no line or paragraph separator:
+  a grant is read by a person before they sign it and every time a house lists it or a judge names
+  it in a refusal, and such a text would be read otherwise than its bytes. Letters written right to
+  left are text; what is refused is the control that turns them.
 
 `fromArray()` reads a document already in an array, and cannot see a key said twice: the array holds
 the last one only.
@@ -256,10 +263,10 @@ That is for what speaks **for** a condition. A receipt that says **no** is read 
 carries what the condition fixes and one argument more is still the instrument saying no of that
 very content, and it is the one that speaks until the content is measured again.
 
-An argument — fixed or free — is named in **letters and underscores, starting with a letter**, at
-most 64 of them. A name with a space after it, or with a letter of another alphabet that looks the
-same, is a name no operation gives an argument: a grant that fixed it would cover a call carrying it
-beside the real one.
+An argument — fixed or free — is named in **letters, digits and underscores, starting with a
+letter**, at most 64 of them. A name with a space after it, or with a letter of another alphabet
+that looks the same, is a name no operation gives an argument: a grant that fixed it would cover a
+call carrying it beside the real one.
 
 ```json
 "conditions": [{"name": "no-host-names", "statement": "what is published names no machine",

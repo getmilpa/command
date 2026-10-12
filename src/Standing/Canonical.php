@@ -116,8 +116,9 @@ final class Canonical
      */
     public static function shown(mixed $written): string
     {
-        // Whatever cannot be spelled is spelled in part: this is asked of what a document held, never refused.
-        $spelled = (string) json_encode($written, \JSON_INVALID_UTF8_SUBSTITUTE | \JSON_PARTIAL_OUTPUT_ON_ERROR | \JSON_UNESCAPED_SLASHES);
+        // Whatever cannot be spelled is spelled in part: this is asked of what a document held, never refused. JSON
+        // writes every control character as its escape but one — DEL — so that one is written as its escape here.
+        $spelled = str_replace("\x7f", '\u007f', (string) json_encode($written, \JSON_INVALID_UTF8_SUBSTITUTE | \JSON_PARTIAL_OUTPUT_ON_ERROR | \JSON_UNESCAPED_SLASHES));
 
         return \strlen($spelled) <= 96 ? $spelled : substr($spelled, 0, 96) . '… (' . \strlen($spelled) . ' bytes as written)';
     }
@@ -173,7 +174,7 @@ final class Canonical
     }
 
     /**
-     * A required, non-blank string of a document, trimmed.
+     * A required, non-blank string of a document, trimmed — and one line of plain text ({@see self::oneLine()}).
      *
      * @param array<array-key, mixed> $data
      */
@@ -183,8 +184,38 @@ final class Canonical
         if (!\is_string($value) || trim($value) === '') {
             throw new \InvalidArgumentException(\sprintf('%s needs «%s», in words', $where, $key));
         }
+        if (!self::oneLine(trim($value))) {
+            throw new \InvalidArgumentException(self::notOneLine("{$where} gives «{$key}»", $value));
+        }
 
         return trim($value);
+    }
+
+    /**
+     * Whether a text is ONE LINE OF PLAIN TEXT: read as it is written (decided by Rod, 2026-10-12).
+     *
+     * A grant is read by a person before they sign it, and again every time a house lists it or a judge names it in
+     * a refusal. A text that carried a line break, a tab, an escape or any other control character — or one of the
+     * characters that turn or isolate the direction text is read in, or a line or paragraph separator — would be
+     * read otherwise than its bytes: a condition's name could clear the line a terminal printed it on and leave «OK»
+     * in its place. So every text a grant keeps is refused when it is read if it carries one:
+     *
+     *   · the C0 controls, DEL and the C1 controls (U+0000–U+001F, U+007F–U+009F);
+     *   · the direction controls (U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069);
+     *   · the line and the paragraph separator (U+2028, U+2029);
+     *   · and bytes that are not text at all.
+     *
+     * Letters written right to left are text and are taken; what is refused is the control that turns them.
+     */
+    public static function oneLine(string $text): bool
+    {
+        return preg_match('/[\x{0000}-\x{001F}\x{007F}-\x{009F}\x{061C}\x{200E}\x{200F}\x{2028}-\x{202E}\x{2066}-\x{2069}]/u', $text) === 0;
+    }
+
+    /** What a refusal says of a text that is not one line of plain text; `$what` names it, as «X gives «key»». */
+    public static function notOneLine(string $what, string $text): string
+    {
+        return \sprintf('%s in one line of plain text — no line break, no tab, no control character, and nothing that turns the direction it is read in: what a person signs is read as it is written. Got %s', $what, self::shown($text));
     }
 
     /**

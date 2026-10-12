@@ -316,6 +316,7 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
         self::assertSame('null', Canonical::shown(null));
         self::assertSame('"a/b \\u00e9 \\u001b"', Canonical::shown("a/b \u{e9} \x1b"));
         self::assertSame('"\\ufffd"', Canonical::shown("\xB1"), 'bytes that are not text are said as what they are not');
+        self::assertSame('"a\\u007fb \\u0085 \\u202e"', Canonical::shown("a\x7fb \u{85} \u{202e}"), 'the one control character JSON leaves as it is, and the ones above it');
         $long = Canonical::shown(str_repeat('x', 500));
         self::assertSame(96, strpos($long, '…'));
         self::assertStringEndsWith('… (502 bytes as written)', $long);
@@ -353,15 +354,19 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
     public function testARefusalSaysBackWhatWasWrittenBoundedAndWithNothingATerminalObeys(\Closure $document): void
     {
         // What makes a terminal clear its line, go back to its start, and hide what follows — then a sentence of the
-        // drafter's own, a right-to-left override, and 300 000 bytes more.
+        // drafter's own, a right-to-left override, and 300 000 bytes more. And the same length in plain words: a text
+        // that is one line and is still not to be said back whole.
         $forged = "\x1b[2K\rOK: standing grant «release-line» is in force.\x1b[8m\u{202E}" . str_repeat('x', 300_000);
+        $plain = 'release ' . str_repeat('x', 300_000);
 
-        $refusal = self::refusal($document($forged));
+        foreach ([$forged, $plain] as $said) {
+            $refusal = self::refusal($document($said));
 
-        self::assertNotNull($refusal, 'control: the document is refused');
-        self::assertSame(0, preg_match('/[^\x20-\x7E«»—…]/u', $refusal), 'the refusal carries a byte a terminal obeys, or a character that reorders what is read');
-        self::assertLessThan(1200, \strlen($refusal), 'the refusal is as long as what the drafter wrote');
-        self::assertStringNotContainsString("\rOK: standing grant", $refusal);
+            self::assertNotNull($refusal, 'control: the document is refused');
+            self::assertSame(0, preg_match('/[^\x20-\x7E«»—…]/u', $refusal), 'the refusal carries a byte a terminal obeys, or a character that reorders what is read');
+            self::assertLessThan(1200, \strlen($refusal), 'the refusal is as long as what the drafter wrote');
+            self::assertStringNotContainsString("\rOK: standing grant", $refusal);
+        }
     }
 
     public function testWhatIsSaidBackIsStillWhatWasWritten(): void
@@ -375,10 +380,14 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
 
     public function testTheIdIsCheckedBeforeItIsUsedToSayAnythingElse(): void
     {
-        $refusal = (string) self::refusal((string) json_encode(Grants::document(['id' => "x» is in force.\x1b[8m", 'ceiling' => null])));
+        $refusal = (string) self::refusal((string) json_encode(Grants::document(['id' => 'x» is in force.', 'ceiling' => null])));
 
         self::assertStringContainsString('is known by a short id', $refusal);
         self::assertStringNotContainsString('needs «ceiling»', $refusal, 'a sentence was built around an id nobody had looked at');
+        // …and one that carries what a terminal obeys is refused for that, before anything else is said of it.
+        $forged = (string) self::refusal((string) json_encode(Grants::document(['id' => "x» is in force.\x1b[8m", 'ceiling' => null])));
+        self::assertStringContainsString('gives «id» in one line of plain text', $forged);
+        self::assertStringNotContainsString('needs «ceiling»', $forged);
     }
 
     // ── L6 · a list is written as a list ────────────────────────────────────────────────────────────────────
@@ -424,7 +433,139 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
         self::assertStringContainsString('cannot see a key said twice', (string) (new \ReflectionMethod(StandingGrant::class, 'fromArray'))->getDocComment());
     }
 
-    // ── two proposals, built as the narrowest option and waiting for a person's decision ─────────────────────
+    // ── D7 · what a person signs is read as it is written: every text a grant keeps is one line of text ─────
+
+    /**
+     * Every text of a grant that the reader keeps, each with a place for what a drafter writes in it.
+     *
+     * @return array<string, \Closure(string): array<string, mixed>>
+     */
+    private static function textsAGrantKeeps(): array
+    {
+        $condition = static fn (array $change): array => ['conditions' => [$change + ['name' => 'no-host-names', 'statement' => 'what is published names no machine', 'by' => ['operation' => 'lab:scan', 'free' => ['path']]]]];
+        $falsifier = static fn (array $change): array => ['falsifier' => $change + ['name' => 'a-published-name', 'statement' => 'a published release names a machine', 'watcher' => ['operation' => 'lab:watch'], 'within_seconds' => 3600]];
+
+        return [
+            'how an act is taken back' => static fn (string $text): array => ['undo' => $text],
+            'the name of a condition' => static fn (string $text): array => $condition(['name' => $text]),
+            'what a condition says must hold' => static fn (string $text): array => $condition(['statement' => $text]),
+            'the name of the falsifier' => static fn (string $text): array => $falsifier(['name' => $text]),
+            'what the falsifier says' => static fn (string $text): array => $falsifier(['statement' => $text]),
+            'a seat it lends to' => static fn (string $text): array => ['to' => [Grants::SEAT, $text]],
+            'the suspension it lifts' => static fn (string $text): array => ['supersedes' => 'older', 'lifts' => $text],
+            'the value of an argument a covered call fixes' => static fn (string $text): array => ['covers' => [['operation' => 'lab:publish', 'arguments' => ['channel' => $text]]]],
+            'the value of an argument a measuring call fixes' => static fn (string $text): array => $condition(['by' => ['operation' => 'lab:scan', 'arguments' => ['mode' => $text], 'free' => ['path']]]),
+            'the inverse its ceiling names' => static fn (string $text): array => ['ceiling' => Grants::document()['ceiling'] + ['rollback_contract' => $text]],
+        ];
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function whatIsNotReadAsItIsWritten(): iterable
+    {
+        // The probe of the refusal that reads as «OK», taken to a grant that is ACCEPTED: in every text it keeps.
+        foreach (array_keys(self::textsAGrantKeeps()) as $field) {
+            yield $field . ': a line a terminal clears and writes over' => [$field, "release\x1b[2K\rOK: every condition holds.\x1b[8m"];
+        }
+        // A seat was already refused when it carried a space; one that carries what a terminal obeys and no space was not.
+        yield 'a seat it lends to: what hides the rest of a line, and no space' => ['a seat it lends to', "SEAT\x1b[8mAA"];
+        // …and, in one of them, each kind of character that makes a line read otherwise than its bytes.
+        $kinds = [
+            'a line feed inside it' => "one\nand another", 'a carriage return' => "one\rand another", 'a tab' => "one\tand another",
+            'a null byte' => "one\0and another", 'an escape' => "one\x1b[1mand another", 'a delete' => "one\x7fand another",
+            'a next-line (C1)' => "one\u{85}and another", 'a control sequence introducer (C1)' => "one\u{9b}1mand another",
+            'a line separator' => "one\u{2028}and another", 'a paragraph separator' => "one\u{2029}and another",
+            'a right-to-left override' => "one \u{202e}rehtona dna", 'a left-to-right embedding' => "one \u{202a}and another\u{202c}",
+            'a pop of direction with nothing before it' => "one\u{202c} and another", 'a right-to-left isolate' => "one \u{2067}and another\u{2069}",
+            'a first-strong isolate' => "one \u{2068}and another", 'a left-to-right mark' => "one\u{200e} and another",
+            'a right-to-left mark' => "one\u{200f} and another", 'an Arabic letter mark' => "one\u{61c} and another",
+        ];
+        foreach ($kinds as $kind => $text) {
+            yield 'what a condition says must hold: ' . $kind => ['what a condition says must hold', $text];
+        }
+    }
+
+    #[DataProvider('whatIsNotReadAsItIsWritten')]
+    public function testEveryTextAGrantKeepsIsOneLineThatIsReadAsItIsWritten(string $field, string $text): void
+    {
+        $document = (string) json_encode(Grants::document(self::textsAGrantKeeps()[$field]($text)));
+        try {
+            $grant = StandingGrant::fromJson($document);
+        } catch (\InvalidArgumentException $refused) {
+            self::assertStringContainsString('one line of plain text', $refused->getMessage());
+            self::assertSame(0, preg_match('/[^\x20-\x7E«»—…]/u', $refused->getMessage()), 'the refusal itself says it back raw');
+
+            return;
+        }
+        // ACCEPTED — and what the pure judge then says of a call it refuses, a person reads at a terminal.
+        $says = StandingJudge::judge($grant, Grants::standing([]), Grants::call(arguments: ['channel' => $grant->covers[0]->arguments['channel'] ?? 'stable', 'path' => 'candidate.tar']))->sentence;
+        self::fail('accepted; the grant keeps ' . json_encode($text) . ' and the judge\'s own refusal reads: ' . json_encode($says));
+    }
+
+    public function testTheRefusalOfTheJudgeReadAsOkWasBuiltFromAGrantThatIsNowRefused(): void
+    {
+        // The probe itself, end to end: a condition named so that the judge's «was never measured» clears its line
+        // and leaves «OK» in its place. Such a grant was accepted; it is not one any more.
+        $forged = "c\x1b[2K\rOK: standing grant «release-line» lends this call.\x1b[8m";
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('one line of plain text');
+
+        Grants::grant(['conditions' => [['name' => $forged, 'statement' => 's', 'by' => ['operation' => 'lab:scan', 'free' => ['path']]]]]);
+    }
+
+    public function testTextThatIsOnlyTextIsStillTaken(): void
+    {
+        // Controls: what a person writes in any language, with the marks and the spaces a sentence has — and what is
+        // blank AROUND a text, which was never part of it.
+        $legitimate = [
+            'retirar la versión y publicar la anterior — «sin excepción»',
+            'ce qui est publié ne nomme aucune machine ; jamais',
+            "\u{5e7}\u{5d5}\u{5d1}\u{5e5} release \u{5d0}\u{5d7}\u{5d3}", // letters written right to left, with no control that turns them
+            "\u{0645}\u{0644}\u{0641} release",
+            "\u{767a}\u{884c}\u{3092}\u{53d6}\u{308a}\u{6d88}\u{3059}",
+            "a no-break\u{a0}space, a soft\u{ad}hyphen and a zero-width\u{200d}joiner",
+            'tabs are words: "tab", and so is \\n — written out, not typed',
+        ];
+        foreach ($legitimate as $text) {
+            $grant = Grants::grant(['undo' => $text, 'conditions' => [['name' => $text, 'statement' => $text, 'by' => ['operation' => 'lab:scan', 'free' => ['path']]]]]);
+            self::assertSame($text, $grant->undo);
+            self::assertSame($text, $grant->conditions[0]->statement);
+        }
+        self::assertSame('take it back', Grants::grant(['undo' => "  take it back\n"])->undo, 'what is blank around a text was never part of it');
+    }
+
+    public function testTheValuesRefuseTheSameTextWhenBuiltByHand(): void
+    {
+        // The same rule where no document is read: a value built in code is a value a listing prints too.
+        $by = new NamedCall('lab:scan', free: ['path']);
+        $builds = [
+            'a condition by its name' => static fn (string $text): object => new \Milpa\Command\Standing\GrantCondition($text, 's', $by),
+            'a condition by its statement' => static fn (string $text): object => new \Milpa\Command\Standing\GrantCondition('c', $text, $by),
+            'a falsifier by its name' => static fn (string $text): object => new \Milpa\Command\Standing\Falsifier($text, 's', new NamedCall('lab:watch'), 60),
+            'a falsifier by its statement' => static fn (string $text): object => new \Milpa\Command\Standing\Falsifier('f', $text, new NamedCall('lab:watch'), 60),
+            'a named call by the value of an argument' => static fn (string $text): object => new NamedCall('lab:publish', ['channel' => $text]),
+        ];
+        foreach ($builds as $what => $build) {
+            foreach (["one\nand another", "one \u{202e}rehtona dna", "trailing\n", "\xB1 bytes that are not text"] as $text) {
+                try {
+                    $build($text);
+                    self::fail("{$what} took " . json_encode($text, \JSON_INVALID_UTF8_SUBSTITUTE));
+                } catch (\InvalidArgumentException $refused) {
+                    self::assertStringContainsString('one line of plain text', $refused->getMessage(), $what);
+                }
+            }
+            self::assertIsObject($build('plain words'), $what);
+        }
+        self::assertSame(['n' => 7, 'yes' => true], (new NamedCall('lab:publish', ['n' => 7, 'yes' => true]))->arguments, 'control: a number and a yes are not text');
+        // …and a grant itself, put together from its parts.
+        $parts = Grants::grant();
+        $grant = static fn (string $undo): StandingGrant => new StandingGrant($parts->id, $parts->to, $parts->covers, $parts->ceiling, $parts->conditions, $undo, $parts->falsifier);
+        self::assertSame('plain words', $grant('plain words')->undo);
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('gives «undo» in one line of plain text');
+        $grant("one\nand another");
+    }
+
+    // ── D5 and D6 · decided by Rod, 2026-10-12: a red receipt always counts, and how an argument is named ────
 
     /** L9 — the closed match is right for what speaks FOR a condition. A red receipt only narrows. */
     public function testARedReceiptFromARunTheGrantDoesNotDescribeStillSpeaks(): void
@@ -472,14 +613,14 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
         yield 'a letter of another alphabet that looks the same' => ["ch\u{0430}nnel"];
         yield 'a letter that is not shown at all' => ["chan\u{200B}nel"];
         yield 'a digit first' => ['1channel'];
-        yield 'a digit anywhere: the narrowest alphabet has none, because no published operation needs one' => ['sha256'];
+        yield 'an underscore first' => ['_channel'];
         yield 'a dash' => ['release-channel'];
         yield 'a dot' => ['release.channel'];
         yield 'a newline after it' => ["channel\n"];
         yield 'sixty-five letters' => [str_repeat('a', 65)];
     }
 
-    /** L7 — an argument a grant fixes, or leaves free, is named the way operations name theirs. */
+    /** L7 — an argument a grant fixes, or leaves free, is named in letters, digits and underscores, a letter first. */
     #[DataProvider('namesNoOperationGivesAnArgument')]
     public function testAnArgumentIsNamedInPlainLettersTheWayOperationsNameTheirs(string $name): void
     {
@@ -490,7 +631,7 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
                 new NamedCall('lab:publish', ...$how);
                 self::fail('a named call took an argument named ' . json_encode($name));
             } catch (\InvalidArgumentException $refused) {
-                self::assertStringContainsString('letters and underscores', $refused->getMessage());
+                self::assertStringContainsString('letters, digits and underscores', $refused->getMessage());
             }
         }
     }
@@ -498,7 +639,8 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
     public function testEveryArgumentNameThePublishedCatalogueDeclaresIsStillAName(): void
     {
         // Measured on three fresh houses of the published family (95, 71 and 86 operations): the 76 names their
-        // operations give their arguments. The alphabet is the narrowest that refuses none of them.
+        // operations give their arguments, in letters and underscores alone. The alphabet takes them all, and
+        // digits besides: an argument named `sha256` can be fixed.
         $measured = [
             'actor', 'admits', 'answer', 'argument', 'ask', 'assertion', 'authorities', 'because', 'body',
             'boundaries', 'capability', 'class', 'clear', 'component', 'content_type', 'counter', 'cursor',
@@ -514,6 +656,8 @@ final class WhatAFourthReviewFoundInTheContractTest extends TestCase
             self::assertSame([$name => 'x'], (new NamedCall('lab:publish', [$name => 'x']))->arguments);
             self::assertSame([$name], (new NamedCall('lab:publish', free: [$name]))->free);
         }
+        self::assertSame(['ipv4_only' => true, 'sha256' => 'x'], (new NamedCall('lab:publish', ['sha256' => 'x', 'ipv4_only' => true]))->arguments);
+        self::assertSame(['a9', 'b2b'], (new NamedCall('lab:publish', free: ['b2b', 'a9']))->free);
         self::assertSame(['a' => 1], (new NamedCall('lab:publish', [str_repeat('a', 1) => 1]))->arguments);
         self::assertCount(1, (new NamedCall('lab:publish', [str_repeat('a', 64) => 1]))->arguments, 'sixty-four letters are still a name');
     }

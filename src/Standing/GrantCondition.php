@@ -32,6 +32,11 @@ final readonly class GrantCondition
         if (trim($name) === '' || trim($statement) === '') {
             throw new \InvalidArgumentException('a condition names itself and says what must hold — one without a name or a statement is a claim nobody can check');
         }
+        foreach (['name' => $name, 'statement' => $statement] as $key => $text) {
+            if (!Canonical::oneLine($text)) {
+                throw new \InvalidArgumentException(Canonical::notOneLine("a condition gives «{$key}»", $text));
+            }
+        }
     }
 
     /**

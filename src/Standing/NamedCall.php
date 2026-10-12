@@ -38,14 +38,16 @@ use Milpa\Command\Consent\OperationId;
 final readonly class NamedCall
 {
     /**
-     * How an argument is named: letters and underscores, starting with a letter, at most 64 of them.
+     * How an argument is named: letters, digits and underscores, starting with a letter, at most 64 of them
+     * (decided by Rod, 2026-10-12).
      *
      * A name a person can read, and no other. «channel » with a space after it, or with a letter of another
      * alphabet that looks the same, is a name no operation gives an argument: a grant that fixed it would cover a
-     * call carrying it BESIDE the real one, whatever the real one said. Measured on the published catalogue, this is
-     * the narrowest alphabet that refuses none of the 76 names its operations declare.
+     * call carrying it BESIDE the real one, whatever the real one said. Measured on the published catalogue, the 76
+     * names its operations declare use letters and the underscore alone; digits are taken as well, so that an
+     * argument named `sha256` can be fixed.
      */
-    private const ARGUMENT = '/^[A-Za-z][A-Za-z_]{0,63}$/D';
+    private const ARGUMENT = '/^[A-Za-z][A-Za-z0-9_]{0,63}$/D';
 
     public OperationId $operation;
 
@@ -74,10 +76,13 @@ final readonly class NamedCall
         foreach ($arguments as $name => $value) {
             if (!\is_string($name) || preg_match(self::ARGUMENT, $name) !== 1 || !(\is_string($value) || \is_int($value) || \is_bool($value))) {
                 throw new \InvalidArgumentException(\sprintf(
-                    'an argument fixed for «%s» is a name — letters and underscores, starting with a letter — and one plain value: text, a whole number, or true/false; got %s',
+                    'an argument fixed for «%s» is a name — letters, digits and underscores, starting with a letter — and one plain value: text, a whole number, or true/false; got %s',
                     $id->canonical,
                     Canonical::shown([$name => $value]),
                 ));
+            }
+            if (\is_string($value) && !Canonical::oneLine($value)) {
+                throw new \InvalidArgumentException(Canonical::notOneLine("the argument «{$name}» fixed for «{$id->canonical}» gives its value", $value));
             }
             $fixed[$name] = $value;
         }
@@ -87,7 +92,7 @@ final readonly class NamedCall
         foreach ($free as $name) {
             if (!\is_string($name) || preg_match(self::ARGUMENT, $name) !== 1 || \array_key_exists($name, $fixed)) {
                 throw new \InvalidArgumentException(\sprintf(
-                    '«free» of «%s» lists the names of the arguments a call may carry with any value — each in letters and underscores, starting with a letter, and never one it already fixes; got %s',
+                    '«free» of «%s» lists the names of the arguments a call may carry with any value — each in letters, digits and underscores, starting with a letter, and never one it already fixes; got %s',
                     $id->canonical,
                     Canonical::shown($name),
                 ));

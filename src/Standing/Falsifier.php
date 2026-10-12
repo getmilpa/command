@@ -33,6 +33,11 @@ final readonly class Falsifier
         if (trim($name) === '' || trim($statement) === '') {
             throw new \InvalidArgumentException('a falsifier names itself and says what would show the grant wrong');
         }
+        foreach (['name' => $name, 'statement' => $statement] as $key => $text) {
+            if (!Canonical::oneLine($text)) {
+                throw new \InvalidArgumentException(Canonical::notOneLine("a falsifier gives «{$key}»", $text));
+            }
+        }
         if ($withinSeconds < 1) {
             throw new \InvalidArgumentException('falsifier ' . Canonical::shown($name) . ' needs «within_seconds»: how recently its watcher must have given a sign of life, as a whole number of seconds above zero');
         }
